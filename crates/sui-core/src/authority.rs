@@ -1500,7 +1500,7 @@ impl AuthorityState {
         let (kind, signer, _) = transaction.execution_parts();
 
         let silent = true;
-        let executor = sui_execution::executor(protocol_config, silent)
+        let executor = sui_execution::executor(protocol_config, silent, None)
             .expect("Creating an executor should not fail here");
 
         let expensive_checks = false;
@@ -1662,8 +1662,9 @@ impl AuthorityState {
         let transaction_digest = TransactionDigest::new(default_hash(&data));
         let transaction_kind = data.into_kind();
         let silent = true;
-        let executor = sui_execution::executor(protocol_config, silent)
+        let executor = sui_execution::executor(protocol_config, silent, None)
             .expect("Creating an executor should not fail here");
+
         let expensive_checks = false;
         let (inner_temp_store, effects, execution_result) = executor.dev_inspect_transaction(
             &self.database,
