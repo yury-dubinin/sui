@@ -130,7 +130,7 @@ pub enum DomainParseError {
     InvalidUnderscore,
     #[error("Domain must contain at least one label")]
     LabelsEmpty,
-    #[error("Domain can include only one separator")]
+    #[error("Domain must include only one separator")]
     InvalidSeparator,
 }
 
