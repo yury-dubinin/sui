@@ -23,6 +23,8 @@ const NAME_SERVICE_DEFAULT_REVERSE_REGISTRY: &str =
     "0x2fd099e17a292d2bc541df474f9fafa595653848cbabb2d7a4656ec786a1969f";
 const _NAME_SERVICE_OBJECT_ADDRESS: &str =
     "0x6e0ddefc0ad98889c04bab9639e512c21766c5e6366f89e696956d9be6952871";
+const ACCEPTED_TLDS: [&str; 1] = ["sui"];
+const ACCEPTED_SEPARATORS: [char; 3] = ['.', '@', '*'];
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Registry {
@@ -128,6 +130,8 @@ pub enum DomainParseError {
     InvalidUnderscore,
     #[error("Domain must contain at least one label")]
     LabelsEmpty,
+    #[error("Domain can include only one separator")]
+    InvalidSeparator,
 }
 
 impl FromStr for Domain {
@@ -135,7 +139,7 @@ impl FromStr for Domain {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         /// The maximum length of a full domain
-        const MAX_DOMAIN_LENGTH: usize = 200;
+        const MAX_DOMAIN_LENGTH: usize = 253;
 
         if s.len() > MAX_DOMAIN_LENGTH {
             return Err(DomainParseError::ExceedsMaxLength(
@@ -144,8 +148,10 @@ impl FromStr for Domain {
             ));
         }
 
-        let labels = s
-            .split('.')
+        let separator = separator(s)?;
+
+        let mut labels = remove_leading_separator(s, separator)
+            .split(separator)
             .rev()
             .map(validate_label)
             .collect::<Result<Vec<_>, Self::Err>>()?;
@@ -154,10 +160,57 @@ impl FromStr for Domain {
             return Err(DomainParseError::LabelsEmpty);
         }
 
+        add_tld_if_missing(&mut labels);
+
         let labels = labels.into_iter().map(ToOwned::to_owned).collect();
 
         Ok(Domain { labels })
     }
+}
+
+// Parses a separator from the domain string input.
+// E.g.  `example.sui` -> `.` | example@sui -> `@` | `example*sui` -> `*`
+fn separator(s: &str) -> Result<char, DomainParseError> {
+    let mut domain_separator: Option<char> = None;
+
+    for separator in ACCEPTED_SEPARATORS.iter() {
+        if s.contains(*separator) {
+            if let Some(_) = domain_separator {
+                return Err(DomainParseError::InvalidSeparator);
+            } else {
+                domain_separator = Some(*separator);
+            }
+        }
+    };
+
+    match domain_separator {
+        Some(separator) => Ok(separator),
+        None => Ok(ACCEPTED_SEPARATORS[0]),
+    }
+}
+
+// Removes separator from the beggining of the input
+// E.g. `@example` -> `example` | `@example@sui` -> `example@sui`
+fn remove_leading_separator(s: &str, separator: char) -> &str {
+    if let Some(c) = s.chars().next() {
+        if c == separator {
+            return &s[1..];
+        }
+    }
+    s
+}
+
+// If a TLD is missing from the input, we automaticaly add it.
+// e.g. ['example'] -> ['sui', 'example'] | ['test','test'] -> ['sui', 'test', 'test']
+fn add_tld_if_missing(vec: &mut Vec<&str>) {
+    let tld_label = vec.first().unwrap();
+
+    if ACCEPTED_TLDS.contains(tld_label) && vec.len() > 1 {
+        return;
+    };
+
+    // default to .sui lookups.
+    vec.insert(0, ACCEPTED_TLDS[0]);
 }
 
 fn validate_label(label: &str) -> Result<&str, DomainParseError> {
