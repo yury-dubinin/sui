@@ -175,11 +175,11 @@ fn separator(s: &str) -> Result<char, DomainParseError> {
 
     for separator in ACCEPTED_SEPARATORS.iter() {
         if s.contains(*separator) {
-            if let Some(_) = domain_separator {
+            if domain_separator.is_some() {
                 return Err(DomainParseError::InvalidSeparator);
-            } else {
-                domain_separator = Some(*separator);
             }
+
+            domain_separator = Some(*separator);
         }
     }
 
