@@ -181,7 +181,7 @@ fn separator(s: &str) -> Result<char, DomainParseError> {
                 domain_separator = Some(*separator);
             }
         }
-    };
+    }
 
     match domain_separator {
         Some(separator) => Ok(separator),
