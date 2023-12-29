@@ -151,13 +151,9 @@ impl PgManager {
         .await
     }
 
-    async fn get_obj(
-        &self,
-        address: Vec<u8>,
-        version: Option<i64>,
-    ) -> Result<Option<StoredObject>, Error> {
+    async fn get_obj(&self, address: Vec<u8>) -> Result<Option<StoredObject>, Error> {
         self.run_query_async_with_cost(
-            move || Ok(QueryBuilder::get_obj(address.clone(), version)),
+            move || Ok(QueryBuilder::get_obj(address.clone())),
             |query| move |conn| query.get_result::<StoredObject>(conn).optional(),
         )
         .await
@@ -1133,7 +1129,7 @@ impl PgManager {
         )
         .map_err(|e| Error::Internal(format!("Deriving dynamic field id cannot fail: {e}")))?;
 
-        let stored_obj = self.get_obj(id.to_vec(), None).await?;
+        let stored_obj = self.get_obj(id.to_vec()).await?;
         if let Some(stored_object) = stored_obj {
             let df_object_id = stored_object.df_object_id.as_ref().ok_or_else(|| {
                 Error::Internal("Dynamic field does not have df_object_id".to_string())

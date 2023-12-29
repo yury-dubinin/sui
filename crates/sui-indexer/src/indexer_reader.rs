@@ -128,6 +128,21 @@ impl IndexerReader {
             .map_err(|e| IndexerError::PostgresReadError(e.to_string()))
     }
 
+    pub fn run_consistent_query<T, E, F>(&self, query: F) -> Result<T, IndexerError>
+    where
+        F: FnOnce(&mut PgConnection) -> Result<T, E>,
+        E: From<diesel::result::Error> + std::error::Error,
+    {
+        blocking_call_is_ok_or_panic();
+
+        let mut connection = self.get_connection()?;
+        connection
+            .build_transaction()
+            .repeatable_read()
+            .run(query)
+            .map_err(|e| IndexerError::PostgresReadError(e.to_string()))
+    }
+
     pub async fn spawn_blocking<F, R, E>(&self, f: F) -> Result<R, E>
     where
         F: FnOnce(Self) -> Result<R, E> + Send + 'static,

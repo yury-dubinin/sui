@@ -42,15 +42,13 @@ impl GenericQueryBuilder<Pg> for PgQueryBuilder {
             .filter(transactions::dsl::transaction_digest.eq(digest))
             .into_boxed()
     }
-    fn get_obj(address: Vec<u8>, version: Option<i64>) -> objects::BoxedQuery<'static, Pg> {
-        let mut query = objects::dsl::objects.into_boxed();
-        query = query.filter(objects::dsl::object_id.eq(address));
 
-        if let Some(version) = version {
-            query = query.filter(objects::dsl::object_version.eq(version));
-        }
-        query
+    fn get_obj(address: Vec<u8>) -> objects::BoxedQuery<'static, Pg> {
+        objects::dsl::objects
+            .filter(objects::dsl::object_id.eq(address))
+            .into_boxed()
     }
+
     fn get_obj_by_type(object_type: String) -> objects::BoxedQuery<'static, Pg> {
         objects::dsl::objects
             .filter(objects::dsl::object_type.eq(object_type))

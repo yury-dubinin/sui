@@ -118,6 +118,7 @@ impl GasEffects {
             ctx.data_unchecked(),
             self.object_id,
             Some(self.object_version),
+            None,
         )
         .await
         .extend()

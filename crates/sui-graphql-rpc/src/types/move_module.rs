@@ -34,7 +34,7 @@ pub(crate) type CFunction = Cursor<String>;
 impl MoveModule {
     /// The package that this Move module was defined in
     async fn package(&self, ctx: &Context<'_>) -> Result<MovePackage> {
-        MovePackage::query(ctx.data_unchecked(), self.storage_id, None)
+        MovePackage::query(ctx.data_unchecked(), self.storage_id, None, None)
             .await
             .extend()?
             .ok_or_else(|| {
@@ -79,7 +79,7 @@ impl MoveModule {
         connection.has_next_page = next;
 
         let runtime_id = *bytecode.self_id().address();
-        let Some(package) = MovePackage::query(ctx.data_unchecked(), self.storage_id, None)
+        let Some(package) = MovePackage::query(ctx.data_unchecked(), self.storage_id, None, None)
             .await
             .extend()?
         else {
@@ -292,7 +292,7 @@ impl MoveModule {
         address: SuiAddress,
         name: &str,
     ) -> Result<Option<Self>, Error> {
-        let Some(package) = MovePackage::query(db, address, None).await? else {
+        let Some(package) = MovePackage::query(db, address, None, None).await? else {
             return Ok(None);
         };
 
