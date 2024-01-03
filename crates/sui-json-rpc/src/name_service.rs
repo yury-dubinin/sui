@@ -168,8 +168,8 @@ impl FromStr for Domain {
     }
 }
 
-// Parses a separator from the domain string input.
-// E.g.  `example.sui` -> `.` | example@sui -> `@` | `example*sui` -> `*`
+/// Parses a separator from the domain string input.
+/// E.g.  `example.sui` -> `.` | example@sui -> `@` | `example*sui` -> `*`
 fn separator(s: &str) -> Result<char, DomainParseError> {
     let mut domain_separator: Option<char> = None;
 
@@ -189,8 +189,8 @@ fn separator(s: &str) -> Result<char, DomainParseError> {
     }
 }
 
-// Removes separator from the beggining of the input
-// E.g. `@example` -> `example` | `@example@sui` -> `example@sui`
+/// Removes separator from the beggining of the input
+/// E.g. `@example` -> `example` | `@example@sui` -> `example@sui`
 fn remove_leading_separator(s: &str, separator: char) -> &str {
     if let Some(c) = s.chars().next() {
         if c == separator {
@@ -200,8 +200,8 @@ fn remove_leading_separator(s: &str, separator: char) -> &str {
     s
 }
 
-// If a TLD is missing from the input, we automaticaly add it.
-// e.g. ['example'] -> ['sui', 'example'] | ['test','test'] -> ['sui', 'test', 'test']
+/// If a TLD is missing from the input, we automaticaly add it.
+/// e.g. ['example'] -> ['sui', 'example'] | ['test','test'] -> ['sui', 'test', 'test']
 fn add_tld_if_missing(vec: &mut Vec<&str>) {
     let tld_label = vec.first().unwrap();
 
