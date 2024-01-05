@@ -4,7 +4,7 @@
 use async_graphql::{ErrorExtensionValues, ErrorExtensions, Pos, Response, ServerError};
 use async_graphql_axum::GraphQLResponse;
 use sui_indexer::errors::IndexerError;
-use sui_json_rpc::name_service::DomainParseError;
+use sui_json_rpc::name_service::NameServiceError;
 
 use crate::context_data::db_data_provider::DbValidationError;
 
@@ -71,7 +71,7 @@ pub enum Error {
     #[error("Invalid filter option or value provided")]
     InvalidFilter,
     #[error(transparent)]
-    DomainParse(#[from] DomainParseError),
+    NameService(#[from] NameServiceError),
     #[error(transparent)]
     DbValidation(#[from] DbValidationError),
     #[error("Invalid coin type: {0}")]
@@ -104,7 +104,7 @@ impl ErrorExtensions for Error {
             | Error::DynamicFieldOnAddress
             | Error::InvalidFilter
             | Error::ProtocolVersionUnsupported { .. }
-            | Error::DomainParse(_)
+            | Error::NameService(_)
             | Error::DbValidation(_)
             | Error::CursorNoBeforeAfter
             | Error::CursorNoFirstLast

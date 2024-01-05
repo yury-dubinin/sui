@@ -940,17 +940,16 @@ impl PgManager {
     ) -> Result<Option<Address>, Error> {
         let domain = name.parse::<Domain>()?;
 
-        let record_id = name_service_config.record_field_id(&domain);
+        let record_id = name_service_config.record_field_id(&domain, None);
 
         let field_record_object = match self.inner.get_object_in_blocking_task(record_id).await? {
             Some(o) => o,
             None => return Ok(None),
         };
 
-        let record = field_record_object
-            .to_rust::<Field<Domain, NameRecord>>()
-            .ok_or_else(|| Error::Internal(format!("Malformed Object {record_id}")))?
-            .value;
+        let record = NameRecord::try_from(field_record_object)?;
+
+        // TODO(manos): Implement new logic.
 
         Ok(record.target_address.map(|address| Address {
             address: SuiAddress::from_array(address.to_inner()),
