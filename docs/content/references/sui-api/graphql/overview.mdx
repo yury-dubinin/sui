@@ -24,14 +24,17 @@ Coming soon
 
 ### Using Sui GraphQL RPC
 
-An interactive IDE with autocomplete support and built-in documentation is available: [Sui GraphQL](https://mainnet.sui.io/rpc/graphql). 
-Include the `query` information in the `data` parameter of the cURL call to query the endpoint using REST.
+An interactive IDE with autocomplete support and built-in documentation is available for [mainnet](https://rpc.mainnet.mystenlabs.com/graphql). 
+
 
 :::info
 
-The `https://mainnet.sui.io/rpc/graphql/v1` endpoint is rate-limited to keep network throughput optimized.
+The `https://rpc.mainnet.mystenlabs.com/graphql` endpoint is rate-limited to keep network throughput optimized.
 
 :::
+
+
+Include the `query` information in the `data` parameter of the cURL call to query the endpoint using REST.
 ```shell
 # basic query
 curl -X POST https://mainnet.sui.io/rpc/graphql/v1 \
