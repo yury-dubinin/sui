@@ -90,6 +90,21 @@ module Test::M1 {
           digest
           owner {
             __typename
+            ... on Shared {
+              initialSharedVersion
+            }
+            __typename
+            ... on Parent {
+              parent {
+                address
+              }
+            }
+            __typename
+            ... on AddressOwner {
+              owner {
+                address
+              }
+            }
           }
         }
       }
@@ -107,6 +122,21 @@ module Test::M1 {
           digest
           owner {
             __typename
+            ... on Shared {
+              initialSharedVersion
+            }
+            __typename
+            ... on Parent {
+              parent {
+                address
+              }
+            }
+            __typename
+            ... on AddressOwner {
+              owner {
+                address
+              }
+            }
           }
         }
       }
@@ -120,6 +150,21 @@ module Test::M1 {
           digest
           owner {
             __typename
+            ... on Shared {
+              initialSharedVersion
+            }
+            __typename
+            ... on Parent {
+              parent {
+                address
+              }
+            }
+            __typename
+            ... on AddressOwner {
+              owner {
+                address
+              }
+            }
           }
         }
       }
@@ -134,6 +179,21 @@ module Test::M1 {
           digest
           owner {
             __typename
+            ... on Shared {
+              initialSharedVersion
+            }
+            __typename
+            ... on Parent {
+              parent {
+                address
+              }
+            }
+            __typename
+            ... on AddressOwner {
+              owner {
+                address
+              }
+            }
           }
         }
       }
