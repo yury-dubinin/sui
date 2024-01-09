@@ -389,6 +389,5 @@ module crypto::ec_ops {
         assert!(modulo == expected, 0);
     }
 
-    // TODO: KZG commitment verification?
-    // TODO: Groth16 proof verification?
+    // TODO: Groth16 proof verification
 }

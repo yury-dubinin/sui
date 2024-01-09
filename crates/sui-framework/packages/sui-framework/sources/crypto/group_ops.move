@@ -5,12 +5,11 @@
 module sui::group_ops {
 
     use std::vector;
+    use sui::bcs;
 
     friend sui::bls12381;
 
-    // TODO: remove before merging
-    use std::debug;
-    use sui::bcs;
+
 
     const EInvalidInput: u64 = 0;
     const EInvalidBufferLength: u64 = 1;
@@ -30,9 +29,6 @@ module sui::group_ops {
     }
     
     public fun equal<G>(e1: &Element<G>, e2: &Element<G>): bool {
-        // TODO: Remove before merging
-        debug::print(&e1.bytes);
-        debug::print(&e2.bytes);
         e1.bytes == e2.bytes
     }
 

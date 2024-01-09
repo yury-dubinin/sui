@@ -200,7 +200,7 @@ module sui::bls12381 {
     /////////////////////////////////
     ////// Gt group operations //////
 
-    // TODO: remove?
+    // TODO: remove? not sure I see a use case for this
     public fun gt_from_bytes(bytes: &vector<u8>): Element<GT> {
         group_ops::from_bytes(GT_TYPE, bytes, false)
     }
