@@ -68,6 +68,7 @@ type CheckpointExecutionBuffer = FuturesOrdered<JoinHandle<VerifiedCheckpoint>>;
 
 /// The interval to log checkpoint progress, in # of checkpoints processed.
 const CHECKPOINT_PROGRESS_LOG_COUNT_INTERVAL: u64 = 5000;
+const SCHEDULING_EVENT_FUTURE_TIMEOUT_MS: u64 = 1000;
 
 pub struct CheckpointExecutor {
     mailbox: broadcast::Receiver<VerifiedCheckpoint>,
@@ -204,8 +205,11 @@ impl CheckpointExecutor {
 
                 }
                 // Check for newly synced checkpoints from StateSync.
-                received = self.mailbox.recv() => match received {
-                    Ok(checkpoint) => {
+                received = timeout(Duration::from_millis(SCHEDULING_EVENT_FUTURE_TIMEOUT_MS), self.mailbox.recv()) => match received {
+                    Err(_elapsed) => {
+                        error!("Received no new synced checkpoints for {} ms. Next checkpoint to be scheduled: {}", SCHEDULING_EVENT_FUTURE_TIMEOUT_MS, next_to_schedule);
+                    },
+                    Ok(Ok(checkpoint)) => {
                         debug!(
                             sequence_number = ?checkpoint.sequence_number,
                             "received checkpoint summary from state sync"
@@ -214,13 +218,13 @@ impl CheckpointExecutor {
                     },
                     // In this case, messages in the mailbox have been overwritten
                     // as a result of lagging too far behind.
-                    Err(RecvError::Lagged(num_skipped)) => {
+                    Ok(Err(RecvError::Lagged(num_skipped))) => {
                         debug!(
                             "Checkpoint Execution Recv channel overflowed {:?} messages",
                             num_skipped,
                         );
                     }
-                    Err(RecvError::Closed) => {
+                    Ok(Err(RecvError::Closed)) => {
                         panic!("Checkpoint Execution Sender (StateSync) closed channel unexpectedly");
                     }
                 }
