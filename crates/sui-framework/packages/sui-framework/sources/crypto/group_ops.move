@@ -9,8 +9,6 @@ module sui::group_ops {
 
     friend sui::bls12381;
 
-
-
     const EInvalidInput: u64 = 0;
     const EInvalidBufferLength: u64 = 1;
 

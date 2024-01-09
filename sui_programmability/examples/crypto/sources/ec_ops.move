@@ -5,7 +5,6 @@
 //
 // Functions with the prefix "insecure" are here for testing, but should be called off-chain (probably implemented in
 // other languages) to avoid leaking secrets.
-#[allow(implicit_const_copy)]
 module crypto::ec_ops {
 
     use sui::bls12381;
@@ -330,13 +329,14 @@ module crypto::ec_ops {
     // Returns x-ORDER if x >= ORDER, otherwise none.
     fun try_substract(x: &vector<u8>): Option<vector<u8>> {
         assert!(vector::length(x) == 32, EInvalidLength);
+        let order = BLS12381_ORDER;
         let c = vector::empty();
         let i = 0;
         let carry: u8 = 0;
         while (i < 32) {
             let curr = 31 - i;
             let b1 = *vector::borrow(x, curr);
-            let b2 = *vector::borrow(&BLS12381_ORDER, curr);
+            let b2 = *vector::borrow(&order, curr);
             let sum: u16 = (b2 as u16) + (carry as u16);
             if (sum > (b1 as u16)) {
                 carry = 1;

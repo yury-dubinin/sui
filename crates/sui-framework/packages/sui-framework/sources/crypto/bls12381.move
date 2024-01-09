@@ -1,8 +1,7 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-// TODO: why is this needed - without it, the compiler complains about calls like group_ops::from_bytes(SCALAR_TYPE, &SCALAR_ZERO_BYTES, true)
-#[allow(implicit_const_copy)]
+/// Group operations of BLS12-381.
 module sui::bls12381 {
 
     use sui::group_ops;
@@ -70,11 +69,13 @@ module sui::bls12381 {
     }
 
     public fun scalar_zero(): Element<Scalar> {
-        group_ops::from_bytes(SCALAR_TYPE, &SCALAR_ZERO_BYTES, true)
+        let zero = SCALAR_ZERO_BYTES;
+        group_ops::from_bytes(SCALAR_TYPE, &zero, true)
     }
 
     public fun scalar_one(): Element<Scalar> {
-        group_ops::from_bytes(SCALAR_TYPE, &SCALAR_ONE_BYTES, true)
+        let one = SCALAR_ONE_BYTES;
+        group_ops::from_bytes(SCALAR_TYPE, &one, true)
     }
 
     public fun scalar_add(e1: &Element<Scalar>, e2: &Element<Scalar>): Element<Scalar> {
@@ -111,11 +112,13 @@ module sui::bls12381 {
     }
 
     public fun g1_identity(): Element<G1> {
-        group_ops::from_bytes(G1_TYPE, &G1_IDENTITY_BYTES, true)
+        let identity = G1_IDENTITY_BYTES;
+        group_ops::from_bytes(G1_TYPE, &identity, true)
     }
 
     public fun g1_generator(): Element<G1> {
-        group_ops::from_bytes(G1_TYPE, &G1_GENERATOR_BYTES, true)
+        let generator = G1_GENERATOR_BYTES;
+        group_ops::from_bytes(G1_TYPE, &generator, true)
     }
 
     public fun g1_add(e1: &Element<G1>, e2: &Element<G1>): Element<G1> {
@@ -158,11 +161,13 @@ module sui::bls12381 {
     }
 
     public fun g2_identity(): Element<G2> {
-        group_ops::from_bytes(G2_TYPE, &G2_IDENTITY_BYTES, true)
+        let identity = G2_IDENTITY_BYTES;
+        group_ops::from_bytes(G2_TYPE, &identity, true)
     }
 
     public fun g2_generator(): Element<G2> {
-        group_ops::from_bytes(G2_TYPE, &G2_GENERATOR_BYTES, true)
+        let generator = G2_GENERATOR_BYTES;
+        group_ops::from_bytes(G2_TYPE, &generator, true)
     }
 
     public fun g2_add(e1: &Element<G2>, e2: &Element<G2>): Element<G2> {
@@ -206,11 +211,13 @@ module sui::bls12381 {
     }
 
     public fun gt_identity(): Element<GT> {
-        group_ops::from_bytes(GT_TYPE, &GT_IDENTITY_BYTES, true)
+        let identity = GT_IDENTITY_BYTES;
+        group_ops::from_bytes(GT_TYPE, &identity, true)
     }
 
     public fun gt_generator(): Element<GT> {
-        group_ops::from_bytes(GT_TYPE, &GT_GENERATOR_BYTES, true)
+        let generator = GT_GENERATOR_BYTES;
+        group_ops::from_bytes(GT_TYPE, &generator, true)
     }
 
     public fun gt_add(e1: &Element<GT>, e2: &Element<GT>): Element<GT> {
