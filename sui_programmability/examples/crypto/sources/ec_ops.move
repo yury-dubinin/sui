@@ -5,6 +5,7 @@
 //
 // Functions with the prefix "insecure" are here for testing, but should be called off-chain (probably implemented in
 // other languages) to avoid leaking secrets.
+#[allow(implicit_const_copy)]
 module crypto::ec_ops {
 
     use sui::bls12381;
