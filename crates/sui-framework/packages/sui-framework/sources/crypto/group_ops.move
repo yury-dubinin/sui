@@ -7,7 +7,6 @@ module sui::group_ops {
     use std::vector;
 
     friend sui::bls12381;
-    friend sui::ristretto255;
 
     // TODO: remove before merging
     use std::debug;
