@@ -1,11 +1,11 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::sync::Arc;
+use std::{net::SocketAddr, sync::Arc};
 
-use axum::extract::Json;
-use axum::extract::State;
+use axum::extract::{ConnectInfo, Json, State};
 use futures::StreamExt;
+use hyper::client;
 use hyper::HeaderMap;
 use jsonrpsee::core::server::helpers::BoundedSubscriptions;
 use jsonrpsee::core::server::helpers::MethodResponse;
@@ -101,12 +101,13 @@ pub async fn json_rpc_handler<L: Logger>(
     State(service): State<JsonRpcService<L>>,
     headers: HeaderMap,
     Json(raw_request): Json<Box<RawValue>>,
+    ConnectInfo(client_addr): ConnectInfo<SocketAddr>,
 ) -> impl axum::response::IntoResponse {
     // Get version from header.
     let api_version = headers
         .get(CLIENT_TARGET_API_VERSION_HEADER)
         .and_then(|h| h.to_str().ok());
-    let response = process_raw_request(&service, api_version, raw_request.get()).await;
+    let response = process_raw_request(&service, api_version, raw_request.get(), client_addr).await;
 
     ok_response(response.result)
 }
@@ -115,9 +116,10 @@ async fn process_raw_request<L: Logger>(
     service: &JsonRpcService<L>,
     api_version: Option<&str>,
     raw_request: &str,
+    client_addr: SocketAddr,
 ) -> MethodResponse {
     if let Ok(request) = serde_json::from_str::<Request>(raw_request) {
-        process_request(request, api_version, service.call_data()).await
+        process_request(request, api_version, service.call_data(), client_addr).await
     } else if let Ok(_batch) = serde_json::from_str::<Vec<&RawValue>>(raw_request) {
         MethodResponse::error(
             Id::Null,
@@ -133,6 +135,7 @@ async fn process_request<L: Logger>(
     req: Request<'_>,
     api_version: Option<&str>,
     call: CallData<'_, L>,
+    client_addr: SocketAddr,
 ) -> MethodResponse {
     let CallData {
         methods,
@@ -144,8 +147,13 @@ async fn process_request<L: Logger>(
     let conn_id = 0; // unused
 
     let params = Params::new(req.params.map(|params| params.get()));
-    let name = rpc_router.route(&req.method, api_version);
+    let name = rpc_router.route(&req.method, api_version, client_addr);
+    // TODO: here we need to somehow insert the client address into the params
+    // (or elsewhere?) depending on the method name
+
     let id = req.id;
+
+    let context = RequestContext { client_addr };
 
     let response = match methods.method_with_name(name) {
         None => {
@@ -177,7 +185,6 @@ async fn process_request<L: Logger>(
 
                 let id = id.into_owned();
                 let params = params.into_owned();
-
                 (callback)(id, params, conn_id, max_response_body_size as usize, None).await
             }
             MethodKind::Subscription(_) | MethodKind::Unsubscription(_) => {

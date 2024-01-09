@@ -1,7 +1,10 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    net::SocketAddr,
+};
 use sui_open_rpc::MethodRouting;
 
 #[derive(Debug, Clone)]
@@ -22,17 +25,30 @@ impl RpcRouter {
         }
     }
 
-    pub fn route<'c, 'a: 'c, 'b: 'c>(&'a self, method: &'b str, version: Option<&str>) -> &'c str {
+    pub fn route<'c, 'a: 'c, 'b: 'c>(
+        &'a self,
+        method: &'b str,
+        version: Option<&str>,
+        client_addr: SocketAddr,
+    ) -> &'c str {
         // Reject direct access to the old methods
         if self.route_to_methods.contains(method) {
-            "INVALID_ROUTING"
-        } else if self.disable_routing {
-            method
-        } else {
-            // Modify the method name if routing is enabled
-            match (version, self.routes.get(method)) {
-                (Some(v), Some(route)) if route.matches(v) => route.route_to.as_str(),
-                _ => method,
+            return "INVALID_ROUTING";
+        }
+        match method {
+            // unconditional re-routing
+            "execute_transaction_block" => "monitored_execute_transaction_block",
+            // conditional re-routing
+            _ => {
+                if self.disable_routing {
+                    method
+                } else {
+                    // Modify the method name if routing is enabled
+                    match (version, route) {
+                        (Some(v), Some(route)) if route.matches(v) => route.route_to.as_str(),
+                        _ => method,
+                    }
+                }
             }
         }
     }

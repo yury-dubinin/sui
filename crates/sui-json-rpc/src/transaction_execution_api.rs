@@ -7,6 +7,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use fastcrypto::encoding::Base64;
 use fastcrypto::traits::ToFromBytes;
+use hyper::client;
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::RpcModule;
 
@@ -146,12 +147,72 @@ impl TransactionExecutionApi {
             ExecuteTransactionRequest {
                 transaction: txn,
                 request_type,
-            }
+            },
+            None
         ))
         .await?
         .map_err(Error::from)?;
         drop(orch_timer);
 
+        self.handle_post_orchestration(
+            response,
+            opts,
+            digest,
+            input_objs,
+            transaction,
+            raw_transaction,
+            sender,
+        )
+        .await
+    }
+
+    async fn monitored_execute_transaction_block(
+        &self,
+        tx_bytes: Base64,
+        signatures: Vec<Base64>,
+        opts: Option<SuiTransactionBlockResponseOptions>,
+        request_type: Option<ExecuteTransactionRequestType>,
+        client_addr: Option<SocketAddr>,
+    ) -> Result<SuiTransactionBlockResponse, Error> {
+        let (opts, request_type, sender, input_objs, txn, transaction, raw_transaction) =
+            self.prepare_execute_transaction_block(tx_bytes, signatures, opts, request_type)?;
+        let digest = *txn.digest();
+
+        let transaction_orchestrator = self.transaction_orchestrator.clone();
+        let orch_timer = self.metrics.orchestrator_latency_ms.start_timer();
+        let response = spawn_monitored_task!(transaction_orchestrator.execute_transaction_block(
+            ExecuteTransactionRequest {
+                transaction: txn,
+                request_type,
+            },
+            Some(client_addr),
+        ))
+        .await?
+        .map_err(Error::from)?;
+        drop(orch_timer);
+
+        handle_post_orchestration(
+            response,
+            opts,
+            digest,
+            input_objs,
+            transaction,
+            raw_transaction,
+            sender,
+        )
+        .await
+    }
+
+    async fn handle_post_orchestration(
+        &self,
+        response: ExecuteTransactionResponse,
+        opts: SuiTransactionBlockResponseOptions,
+        digest: TransactionDigest,
+        input_objs: Vec<InputObjectKind>,
+        transaction: Option<SuiTransactionBlock>,
+        raw_transaction: Vec<u8>,
+        sender: SuiAddress,
+    ) -> Result<SuiTransactionBlockResponse, Error> {
         let _post_orch_timer = self.metrics.post_orchestrator_latency_ms.start_timer();
         let ExecuteTransactionResponse::EffectsCert(cert) = response;
         let (effects, transaction_events, is_executed_locally) = *cert;
@@ -277,6 +338,26 @@ impl WriteApiServer for TransactionExecutionApi {
         with_tracing!(Duration::from_secs(10), async move {
             self.execute_transaction_block(tx_bytes, signatures, opts, request_type)
                 .await
+        })
+    }
+
+    async fn monitored_execute_transaction_block(
+        &self,
+        tx_bytes: Base64,
+        signatures: Vec<Base64>,
+        opts: Option<SuiTransactionBlockResponseOptions>,
+        request_type: Option<ExecuteTransactionRequestType>,
+        client_addr: Option<SocketAddr>,
+    ) -> RpcResult<SuiTransactionBlockResponse> {
+        with_tracing!(Duration::from_secs(10), async move {
+            self.monitored_execute_transaction_block(
+                tx_bytes,
+                signatures,
+                opts,
+                request_type,
+                client_addr,
+            )
+            .await
         })
     }
 
