@@ -14,7 +14,6 @@ module crypto::ec_ops {
     use sui::hash::blake2b256;
     use std::option::Option;
     use std::option;
-    use sui::ristretto255;
     #[test_only]
     use std::hash::sha2_256;
     #[test_only]
@@ -51,56 +50,56 @@ module crypto::ec_ops {
 
     // An encryption of group element m under pk is (r*G, r*pk + m) for random r.
     struct ElGamalEncryption has drop, store {
-        ephemeral: Element<ristretto255::G>,
-        ciphertext: Element<ristretto255::G>,
+        ephemeral: Element<bls12381::G1>,
+        ciphertext: Element<bls12381::G1>,
     }
 
     // The following is insecure since the secret key is small, but in practice it should be a random scalar.
     #[test_only]
-    fun insecure_elgamal_key_gen(sk: u64): (Element<ristretto255::Scalar>, Element<ristretto255::G>) {
-        let sk = ristretto255::scalar_from_u64(sk);
-        let pk = ristretto255::g_mul(&sk, &ristretto255::g_generator());
+    fun insecure_elgamal_key_gen(sk: u64): (Element<bls12381::Scalar>, Element<bls12381::G1>) {
+        let sk = bls12381::scalar_from_u64(sk);
+        let pk = bls12381::g1_mul(&sk, &bls12381::g1_generator());
         (sk, pk)
     }
 
     // The following is insecure since the nonce is small, but in practice it should be a random scalar.
     #[test_only]
     fun insecure_elgamal_encrypt(
-        pk: &Element<ristretto255::G>,
+        pk: &Element<bls12381::G1>,
         r: u64,
-        m: &Element<ristretto255::G>
+        m: &Element<bls12381::G1>
     ): ElGamalEncryption {
-        let r = ristretto255::scalar_from_u64(r);
-        let ephemeral = ristretto255::g_mul(&r, &ristretto255::g_generator());
-        let pk_r  = ristretto255::g_mul(&r, pk);
-        let ciphertext = ristretto255::g_add(m, &pk_r);
+        let r = bls12381::scalar_from_u64(r);
+        let ephemeral = bls12381::g1_mul(&r, &bls12381::g1_generator());
+        let pk_r  = bls12381::g1_mul(&r, pk);
+        let ciphertext = bls12381::g1_add(m, &pk_r);
         ElGamalEncryption { ephemeral, ciphertext }
     }
 
-    public fun elgamal_decrypt(sk: &Element<ristretto255::Scalar>, enc: &ElGamalEncryption): Element<ristretto255::G> {
-        let pk_r = ristretto255::g_mul(sk, &enc.ephemeral);
-        ristretto255::g_sub(&enc.ciphertext, &pk_r)
+    public fun elgamal_decrypt(sk: &Element<bls12381::Scalar>, enc: &ElGamalEncryption): Element<bls12381::G1> {
+        let pk_r = bls12381::g1_mul(sk, &enc.ephemeral);
+        bls12381::g1_sub(&enc.ciphertext, &pk_r)
     }
 
     // Basic sigma protocol for proving equality of two ElGamal encryptions.
     // See https://crypto.stackexchange.com/questions/30010/is-there-a-way-to-prove-equality-of-plaintext-that-was-encrypted-using-different
     struct EqualityProof has drop, store {
-        a1: Element<ristretto255::G>,
-        a2: Element<ristretto255::G>,
-        a3: Element<ristretto255::G>,
-        z1: Element<ristretto255::Scalar>,
-        z2: Element<ristretto255::Scalar>,
+        a1: Element<bls12381::G1>,
+        a2: Element<bls12381::G1>,
+        a3: Element<bls12381::G1>,
+        z1: Element<bls12381::Scalar>,
+        z2: Element<bls12381::Scalar>,
     }
 
     public fun fiat_shamir_challenge(
-        pk1: &Element<ristretto255::G>,
-        pk2: &Element<ristretto255::G>,
+        pk1: &Element<bls12381::G1>,
+        pk2: &Element<bls12381::G1>,
         enc1: &ElGamalEncryption,
         enc2: &ElGamalEncryption,
-        a1: &Element<ristretto255::G>,
-        a2: &Element<ristretto255::G>,
-        a3: &Element<ristretto255::G>,
-    ): Element<ristretto255::Scalar> {
+        a1: &Element<bls12381::G1>,
+        a2: &Element<bls12381::G1>,
+        a3: &Element<bls12381::G1>,
+    ): Element<bls12381::Scalar> {
         let to_hash = vector::empty<u8>();
         vector::append(&mut to_hash, *group_ops::bytes(pk1));
         vector::append(&mut to_hash, *group_ops::bytes(pk2));
@@ -115,75 +114,75 @@ module crypto::ec_ops {
         // Make sure we are in the right field. Note that for security we only need the lower 128 bits.
         let len = vector::length(&hash);
         *vector::borrow_mut(&mut hash, len-1) = 0;
-        ristretto255::scalar_from_bytes(&hash)
+        bls12381::scalar_from_bytes(&hash)
     }
 
     // The following is insecure since the nonces are small, but in practice they should be random scalars.
     #[test_only]
     fun insecure_equility_prove(
-        pk1: &Element<ristretto255::G>,
-        pk2: &Element<ristretto255::G>,
+        pk1: &Element<bls12381::G1>,
+        pk2: &Element<bls12381::G1>,
         enc1: &ElGamalEncryption,
         enc2: &ElGamalEncryption,
-        sk1: &Element<ristretto255::Scalar>,
+        sk1: &Element<bls12381::Scalar>,
         r1: u64,
         r2: u64,
     ): EqualityProof {
-        let b1 = ristretto255::scalar_from_u64(r1);
-        let b2 = ristretto255::scalar_from_u64(r1+123);
-        let r2 = ristretto255::scalar_from_u64(r2);
+        let b1 = bls12381::scalar_from_u64(r1);
+        let b2 = bls12381::scalar_from_u64(r1+123);
+        let r2 = bls12381::scalar_from_u64(r2);
 
         // a1 = b1*G (for proving knowledge of sk1)
-        let a1 = ristretto255::g_mul(&b1, &ristretto255::g_generator());
+        let a1 = bls12381::g1_mul(&b1, &bls12381::g1_generator());
         // a2 = b2*g (for proving knowledge of r2)
-        let a2 = ristretto255::g_mul(&b2, &ristretto255::g_generator());
+        let a2 = bls12381::g1_mul(&b2, &bls12381::g1_generator());
         let scalars = vector::singleton(b1);
-        vector::push_back(&mut scalars, ristretto255::scalar_neg(&b2));
+        vector::push_back(&mut scalars, bls12381::scalar_neg(&b2));
         let points = vector::singleton(enc1.ephemeral);
         vector::push_back(&mut points, *pk2);
-        let a3 = ristretto255::g_multi_scalar_multiplication(&scalars, &points);
+        let a3 = bls12381::g1_multi_scalar_multiplication(&scalars, &points);
         // RO challenge
         let c = fiat_shamir_challenge(pk1, pk2, enc1, enc2, &a1, &a2, &a3);
         // z1 = b1 + c*sk1
-        let z1 = ristretto255::scalar_add(&ristretto255::scalar_mul(&c, sk1), &b1);
+        let z1 = bls12381::scalar_add(&bls12381::scalar_mul(&c, sk1), &b1);
         // z2 = b2 + c*r2
-        let z2 = ristretto255::scalar_add(&ristretto255::scalar_mul(&c, &r2), &b2);
+        let z2 = bls12381::scalar_add(&bls12381::scalar_mul(&c, &r2), &b2);
 
         EqualityProof { a1, a2, a3, z1, z2 }
     }
 
     public fun equility_verify(
-        pk1: &Element<ristretto255::G>,
-        pk2: &Element<ristretto255::G>,
+        pk1: &Element<bls12381::G1>,
+        pk2: &Element<bls12381::G1>,
         enc1: &ElGamalEncryption,
         enc2: &ElGamalEncryption,
         proof: &EqualityProof
     ): bool {
         let c = fiat_shamir_challenge(pk1, pk2, enc1, enc2, &proof.a1, &proof.a2, &proof.a3);
         // Check if z1*G = a1 + c*pk1
-        let lhs = ristretto255::g_mul(&proof.z1, &ristretto255::g_generator());
-        let pk1_c = ristretto255::g_mul(&c, pk1);
-        let rhs = ristretto255::g_add(&proof.a1, &pk1_c);
+        let lhs = bls12381::g1_mul(&proof.z1, &bls12381::g1_generator());
+        let pk1_c = bls12381::g1_mul(&c, pk1);
+        let rhs = bls12381::g1_add(&proof.a1, &pk1_c);
         if (!group_ops::equal(&lhs, &rhs)) {
             return false
         };
         // Check if z2*G = a2 + c*eph2
-        let lhs = ristretto255::g_mul(&proof.z2, &ristretto255::g_generator());
-        let eph2_c = ristretto255::g_mul(&c, &enc2.ephemeral);
-        let rhs = ristretto255::g_add(&proof.a2, &eph2_c);
+        let lhs = bls12381::g1_mul(&proof.z2, &bls12381::g1_generator());
+        let eph2_c = bls12381::g1_mul(&c, &enc2.ephemeral);
+        let rhs = bls12381::g1_add(&proof.a2, &eph2_c);
         if (!group_ops::equal(&lhs, &rhs)) {
             return false
         };
         // Check if a3 = c*(ct2 - ct1) + z1*eph1 - z2*pk2
         let scalars = vector::singleton(c);
-        vector::push_back(&mut scalars, ristretto255::scalar_neg(&c));
+        vector::push_back(&mut scalars, bls12381::scalar_neg(&c));
         vector::push_back(&mut scalars, proof.z1);
-        vector::push_back(&mut scalars, ristretto255::scalar_neg(&proof.z2));
+        vector::push_back(&mut scalars, bls12381::scalar_neg(&proof.z2));
         let points = vector::singleton(enc2.ciphertext);
         vector::push_back(&mut points, enc1.ciphertext);
         vector::push_back(&mut points, enc1.ephemeral);
         vector::push_back(&mut points, *pk2);
-        let lhs = ristretto255::g_multi_scalar_multiplication(&scalars, &points);
+        let lhs = bls12381::g1_multi_scalar_multiplication(&scalars, &points);
         if (!group_ops::equal(&lhs, &proof.a3)) {
             return false
         };
@@ -197,7 +196,7 @@ module crypto::ec_ops {
         let (sk1, pk1) = insecure_elgamal_key_gen(2110);
         let (_, pk2) = insecure_elgamal_key_gen(1021);
         // A sender wishes to send an encrypted message to pk1.
-        let m = ristretto255::g_mul(&ristretto255::scalar_from_u64(5555), &ristretto255::g_generator());
+        let m = bls12381::g1_mul(&bls12381::scalar_from_u64(5555), &bls12381::g1_generator());
         let enc1 = insecure_elgamal_encrypt(&pk1, 1234, &m);
         // The first party decrypts the message.
         let m1 = elgamal_decrypt(&sk1, &enc1);

@@ -10,6 +10,7 @@ module sui::group_ops {
 
     // TODO: remove before merging
     use std::debug;
+    use sui::bcs;
 
     const EInvalidInput: u64 = 0;
     const EInvalidBufferLength: u64 = 1;
@@ -65,7 +66,7 @@ module sui::group_ops {
     public(friend) fun multi_scalar_multiplication<S, G>(type: u8, scalars: &vector<Element<S>>, elements: &vector<Element<G>>): Element<G> {
         assert!(vector::length(scalars) == vector::length(elements), EInvalidInput);
         assert!(vector::length(scalars) > 0, EInvalidInput);
-        assert!(vector::length(elements) <= 32, EInvalidInput); // TODO: other limit? can we update this later?
+        assert!(vector::length(elements) <= 512, EInvalidInput); // TODO: other limit? can we update this later?
 
         let scalars_bytes = vector::empty<u8>();
         let elements_bytes = vector::empty<u8>();
@@ -110,13 +111,11 @@ module sui::group_ops {
     public(friend) fun set_as_prefix(x: u64, big_endian: bool, buffer: &mut vector<u8>) {
         let buffer_len = vector::length(buffer);
         assert!(buffer_len > 7, EInvalidBufferLength);
+        let x_as_bytes = bcs::to_bytes(&x); // little endian
         let i = 0;
         while (i < 8) {
-            let curr_byte = x % 0x100;
             let position = if (big_endian) { buffer_len - i - 1 } else { i };
-            let curr_element = vector::borrow_mut(buffer, position);
-            *curr_element = (curr_byte as u8);
-            x = x >> 8;
+            *vector::borrow_mut(buffer, position) = *vector::borrow(&x_as_bytes, i);
             i = i + 1;
         };
     }

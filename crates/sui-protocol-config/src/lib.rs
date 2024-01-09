@@ -103,6 +103,7 @@ const MAX_PROTOCOL_VERSION: u64 = 34;
 //             Enable shared object deletion in testnet.
 //             Enable effects v2 in mainnet.
 // Version 34: Framework changes for random beacon.
+// Version 35: Enable group operations native functions in devnet.
 
 #[derive(Copy, Clone, Debug, Hash, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ProtocolVersion(u64);
@@ -366,6 +367,10 @@ struct FeatureFlags {
     // If true allow calling receiving_object_id function
     #[serde(skip_serializing_if = "is_false")]
     allow_receiving_object_id: bool,
+
+    // Enable native functions for group operations.
+    #[serde(skip_serializing_if = "is_false")]
+    enable_group_ops_native_functions: bool,
 }
 
 fn is_false(b: &bool) -> bool {
@@ -1079,6 +1084,10 @@ impl ProtocolConfig {
     pub fn hardened_otw_check(&self) -> bool {
         self.feature_flags.hardened_otw_check
     }
+
+    pub fn enable_group_ops_native_functions(&self) -> bool {
+        self.feature_flags.enable_group_ops_native_functions
+    }
 }
 
 #[cfg(not(msim))]
@@ -1723,7 +1732,13 @@ impl ProtocolConfig {
 
                     cfg.feature_flags.enable_effects_v2 = true;
                 }
-                34 => {}
+                34 => {
+                    // Only enable group ops on devnet
+                    if chain != Chain::Mainnet && chain != Chain::Testnet {
+                        cfg.feature_flags.enable_group_ops_native_functions = true;
+                    }
+                }
+                35 => {}
                 // Use this template when making changes:
                 //
                 //     // modify an existing constant.

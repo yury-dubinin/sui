@@ -1,9 +1,9 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
+use crate::object_runtime::ObjectRuntime;
 use fastcrypto::error::{FastCryptoError, FastCryptoResult};
 use fastcrypto::groups::{
-    bls12381 as bls, ristretto255 as rist, GroupElement, HashToGroupElement, MultiScalarMul,
-    Pairing,
+    bls12381 as bls, GroupElement, HashToGroupElement, MultiScalarMul, Pairing,
 };
 use fastcrypto::serde_helpers::ToFromByteArray;
 use move_binary_format::errors::PartialVMResult;
@@ -18,27 +18,32 @@ use smallvec::smallvec;
 use std::collections::VecDeque;
 
 pub const INVALID_INPUT_ERROR: u64 = 0;
+pub const NOT_SUPPORTED_ERROR: u64 = 1;
+
+fn is_supported(context: &NativeContext) -> bool {
+    context
+        .extensions()
+        .get::<ObjectRuntime>()
+        .protocol_config
+        .enable_group_ops_native_functions()
+}
 
 // Next should be aligned with the relevant Move modules.
 #[repr(u8)]
 enum Groups {
-    Ristretto255Scalar = 0,
-    Ristretto255G = 1,
-    BLS12381Scalar = 2,
-    BLS12381G1 = 3,
-    BLS12381G2 = 4,
-    BLS12381GT = 5,
+    BLS12381Scalar = 0,
+    BLS12381G1 = 1,
+    BLS12381G2 = 2,
+    BLS12381GT = 3,
 }
 
 impl Groups {
     fn from_u8(value: u8) -> Option<Self> {
         match value {
-            0 => Some(Groups::Ristretto255Scalar),
-            1 => Some(Groups::Ristretto255G),
-            2 => Some(Groups::BLS12381Scalar),
-            3 => Some(Groups::BLS12381G1),
-            4 => Some(Groups::BLS12381G2),
-            5 => Some(Groups::BLS12381GT),
+            0 => Some(Groups::BLS12381Scalar),
+            1 => Some(Groups::BLS12381G1),
+            2 => Some(Groups::BLS12381G2),
+            3 => Some(Groups::BLS12381GT),
             _ => None,
         }
     }
@@ -87,18 +92,16 @@ pub fn internal_validate(
     debug_assert!(args.len() == 2);
 
     // TODO: charge fees
+    let cost = context.gas_used();
+    if !is_supported(context) {
+        return Ok(NativeResult::err(cost, NOT_SUPPORTED_ERROR));
+    }
 
     let bytes_ref = pop_arg!(args, VectorRef);
     let bytes = bytes_ref.as_bytes_ref();
     let group_type = pop_arg!(args, u8);
 
     let result = match Groups::from_u8(group_type) {
-        Some(Groups::Ristretto255Scalar) => {
-            parse::<rist::RistrettoScalar, { rist::RistrettoScalar::BYTE_LENGTH }>(&bytes).is_ok()
-        }
-        Some(Groups::Ristretto255G) => {
-            parse::<rist::RistrettoPoint, { rist::RistrettoPoint::BYTE_LENGTH }>(&bytes).is_ok()
-        }
         Some(Groups::BLS12381Scalar) => {
             parse::<bls::Scalar, { bls::Scalar::BYTE_LENGTH }>(&bytes).is_ok()
         }
@@ -114,8 +117,6 @@ pub fn internal_validate(
         _ => false,
     };
 
-    let cost = context.gas_used();
-
     Ok(NativeResult::ok(cost, smallvec![Value::bool(result)]))
 }
 
@@ -128,6 +129,10 @@ pub fn internal_add(
     debug_assert!(args.len() == 3);
 
     // TODO: charge fees
+    let cost = context.gas_used();
+    if !is_supported(context) {
+        return Ok(NativeResult::err(cost, NOT_SUPPORTED_ERROR));
+    }
 
     let e2_ref = pop_arg!(args, VectorRef);
     let e2 = e2_ref.as_bytes_ref();
@@ -136,14 +141,6 @@ pub fn internal_add(
     let group_type = pop_arg!(args, u8);
 
     let result = match Groups::from_u8(group_type) {
-        Some(Groups::Ristretto255Scalar) => binary_op::<
-            rist::RistrettoScalar,
-            { rist::RistrettoScalar::BYTE_LENGTH },
-        >(|a, b| Ok(a + b), &e1, &e2),
-        Some(Groups::Ristretto255G) => binary_op::<
-            rist::RistrettoPoint,
-            { rist::RistrettoPoint::BYTE_LENGTH },
-        >(|a, b| Ok(a + b), &e1, &e2),
         Some(Groups::BLS12381Scalar) => {
             binary_op::<bls::Scalar, { bls::Scalar::BYTE_LENGTH }>(|a, b| Ok(a + b), &e1, &e2)
         }
@@ -158,8 +155,6 @@ pub fn internal_add(
         }
         _ => Err(FastCryptoError::InvalidInput),
     };
-
-    let cost = context.gas_used();
 
     match result {
         Ok(bytes) => Ok(NativeResult::ok(cost, smallvec![Value::vector_u8(bytes)])),
@@ -177,6 +172,10 @@ pub fn internal_sub(
     debug_assert!(args.len() == 3);
 
     // TODO: charge fees
+    let cost = context.gas_used();
+    if !is_supported(context) {
+        return Ok(NativeResult::err(cost, NOT_SUPPORTED_ERROR));
+    }
 
     let e2_ref = pop_arg!(args, VectorRef);
     let e2 = e2_ref.as_bytes_ref();
@@ -185,14 +184,6 @@ pub fn internal_sub(
     let group_type = pop_arg!(args, u8);
 
     let result = match Groups::from_u8(group_type) {
-        Some(Groups::Ristretto255Scalar) => binary_op::<
-            rist::RistrettoScalar,
-            { rist::RistrettoScalar::BYTE_LENGTH },
-        >(|a, b| Ok(a - b), &e1, &e2),
-        Some(Groups::Ristretto255G) => binary_op::<
-            rist::RistrettoPoint,
-            { rist::RistrettoPoint::BYTE_LENGTH },
-        >(|a, b| Ok(a - b), &e1, &e2),
         Some(Groups::BLS12381Scalar) => {
             binary_op::<bls::Scalar, { bls::Scalar::BYTE_LENGTH }>(|a, b| Ok(a - b), &e1, &e2)
         }
@@ -207,8 +198,6 @@ pub fn internal_sub(
         }
         _ => Err(FastCryptoError::InvalidInput),
     };
-
-    let cost = context.gas_used();
 
     match result {
         Ok(bytes) => Ok(NativeResult::ok(cost, smallvec![Value::vector_u8(bytes)])),
@@ -226,6 +215,10 @@ pub fn internal_mul(
     debug_assert!(args.len() == 3);
 
     // TODO: charge fees
+    let cost = context.gas_used();
+    if !is_supported(context) {
+        return Ok(NativeResult::err(cost, NOT_SUPPORTED_ERROR));
+    }
 
     let e2_ref = pop_arg!(args, VectorRef);
     let e2 = e2_ref.as_bytes_ref();
@@ -234,16 +227,6 @@ pub fn internal_mul(
     let group_type = pop_arg!(args, u8);
 
     let result = match Groups::from_u8(group_type) {
-        Some(Groups::Ristretto255Scalar) => binary_op::<
-            rist::RistrettoScalar,
-            { rist::RistrettoScalar::BYTE_LENGTH },
-        >(|a, b| Ok(b * a), &e1, &e2),
-        Some(Groups::Ristretto255G) => binary_op_diff::<
-            rist::RistrettoScalar,
-            rist::RistrettoPoint,
-            { rist::RistrettoScalar::BYTE_LENGTH },
-            { rist::RistrettoPoint::BYTE_LENGTH },
-        >(|a, b| Ok(b * a), &e1, &e2),
         Some(Groups::BLS12381Scalar) => {
             binary_op::<bls::Scalar, { bls::Scalar::BYTE_LENGTH }>(|a, b| Ok(b * a), &e1, &e2)
         }
@@ -268,8 +251,6 @@ pub fn internal_mul(
         _ => Err(FastCryptoError::InvalidInput),
     };
 
-    let cost = context.gas_used();
-
     match result {
         Ok(bytes) => Ok(NativeResult::ok(cost, smallvec![Value::vector_u8(bytes)])),
         // Since all Element<G> are validated on construction, this error should never happen unless the requested type is wrong or inputs are invalid.
@@ -286,6 +267,10 @@ pub fn internal_div(
     debug_assert!(args.len() == 3);
 
     // TODO: charge fees
+    let cost = context.gas_used();
+    if !is_supported(context) {
+        return Ok(NativeResult::err(cost, NOT_SUPPORTED_ERROR));
+    }
 
     let e2_ref = pop_arg!(args, VectorRef);
     let e2 = e2_ref.as_bytes_ref();
@@ -294,16 +279,6 @@ pub fn internal_div(
     let group_type = pop_arg!(args, u8);
 
     let result = match Groups::from_u8(group_type) {
-        Some(Groups::Ristretto255Scalar) => binary_op::<
-            rist::RistrettoScalar,
-            { rist::RistrettoScalar::BYTE_LENGTH },
-        >(|a, b| b / a, &e1, &e2),
-        Some(Groups::Ristretto255G) => binary_op_diff::<
-            rist::RistrettoScalar,
-            rist::RistrettoPoint,
-            { rist::RistrettoScalar::BYTE_LENGTH },
-            { rist::RistrettoPoint::BYTE_LENGTH },
-        >(|a, b| b / a, &e1, &e2),
         Some(Groups::BLS12381Scalar) => {
             binary_op::<bls::Scalar, { bls::Scalar::BYTE_LENGTH }>(|a, b| b / a, &e1, &e2)
         }
@@ -328,8 +303,6 @@ pub fn internal_div(
         _ => Err(FastCryptoError::InvalidInput),
     };
 
-    let cost = context.gas_used();
-
     match result {
         Ok(bytes) => Ok(NativeResult::ok(cost, smallvec![Value::vector_u8(bytes)])),
         // Since all Element<G> are validated on construction, this error should never happen unless the requested type is wrong, inputs are invalid, or a=0.
@@ -346,15 +319,16 @@ pub fn internal_hash_to(
     debug_assert!(args.len() == 2);
 
     // TODO: charge fees
+    let cost = context.gas_used();
+    if !is_supported(context) {
+        return Ok(NativeResult::err(cost, NOT_SUPPORTED_ERROR));
+    }
 
     let m_ref = pop_arg!(args, VectorRef);
     let m = m_ref.as_bytes_ref();
     let group_type = pop_arg!(args, u8);
 
     let result = match Groups::from_u8(group_type) {
-        Some(Groups::Ristretto255G) => Ok(rist::RistrettoPoint::hash_to_group_element(&m)
-            .to_byte_array()
-            .to_vec()),
         Some(Groups::BLS12381G1) => Ok(bls::G1Element::hash_to_group_element(&m)
             .to_byte_array()
             .to_vec()),
@@ -363,8 +337,6 @@ pub fn internal_hash_to(
             .to_vec()),
         _ => Err(FastCryptoError::InvalidInput),
     };
-
-    let cost = context.gas_used();
 
     match result {
         Ok(bytes) => Ok(NativeResult::ok(cost, smallvec![Value::vector_u8(bytes)])),
@@ -412,6 +384,10 @@ pub fn internal_multi_scalar_mul(
     debug_assert!(args.len() == 3);
 
     // TODO: charge fees
+    let cost = context.gas_used();
+    if !is_supported(context) {
+        return Ok(NativeResult::err(cost, NOT_SUPPORTED_ERROR));
+    }
 
     let elements_ref = pop_arg!(args, VectorRef);
     let elements = elements_ref.as_bytes_ref();
@@ -421,11 +397,6 @@ pub fn internal_multi_scalar_mul(
 
     // TODO: can potentially improve performance when some of the points are the generator.
     let result = match Groups::from_u8(group_type) {
-        Some(Groups::Ristretto255G) => multi_scalar_mul::<
-            rist::RistrettoPoint,
-            { rist::RistrettoPoint::BYTE_LENGTH },
-            { rist::RistrettoScalar::BYTE_LENGTH },
-        >(scalars.as_ref(), elements.as_ref()),
         Some(Groups::BLS12381G1) => multi_scalar_mul::<
             bls::G1Element,
             { bls::G1Element::BYTE_LENGTH },
@@ -438,7 +409,6 @@ pub fn internal_multi_scalar_mul(
         >(scalars.as_ref(), elements.as_ref()),
         _ => Err(FastCryptoError::InvalidInput),
     };
-    let cost = context.gas_used();
 
     match result {
         Ok(bytes) => Ok(NativeResult::ok(cost, smallvec![Value::vector_u8(bytes)])),
@@ -456,6 +426,10 @@ pub fn internal_pairing(
     debug_assert!(args.len() == 3);
 
     // TODO: charge fees
+    let cost = context.gas_used();
+    if !is_supported(context) {
+        return Ok(NativeResult::err(cost, NOT_SUPPORTED_ERROR));
+    }
 
     let e2_ref = pop_arg!(args, VectorRef);
     let e2 = e2_ref.as_bytes_ref();
@@ -473,8 +447,6 @@ pub fn internal_pairing(
             }),
         _ => Err(FastCryptoError::InvalidInput),
     };
-
-    let cost = context.gas_used();
 
     match result {
         Ok(bytes) => Ok(NativeResult::ok(cost, smallvec![Value::vector_u8(bytes)])),
