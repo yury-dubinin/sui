@@ -838,8 +838,11 @@ impl PgIndexerStoreV2 {
     {
         let this = self.clone();
         let current_span = tracing::Span::current();
+        let guard = self.metrics.tokio_blocking_task_wait_latency.start_timer();
         tokio::task::spawn_blocking(move || {
             let _guard = current_span.enter();
+            let elapsed = guard.stop_and_record();
+            info!(elapsed, "Wait for tokio blocking task pool");
             f(this)
         })
     }
