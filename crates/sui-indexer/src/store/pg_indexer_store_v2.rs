@@ -920,6 +920,14 @@ impl IndexerStoreV2 for PgIndexerStoreV2 {
         &self,
         object_changes: Vec<TransactionObjectChangesToCommit>,
     ) -> Result<(), IndexerError> {
+        let skip_history = std::env::var("SKIP_OBJECT_HISTORY")
+            .map(|val| val.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
+        if skip_history {
+            info!("skipping object history");
+            return Ok(());
+        }
+
         if object_changes.is_empty() {
             return Ok(());
         }
@@ -961,6 +969,14 @@ impl IndexerStoreV2 for PgIndexerStoreV2 {
     // `latest_snapshot_cp` and `latest_cp` based on `objects_snapshot` and `objects_history`,
     // where the size of this range varies between the min and max lag values.
     async fn persist_object_snapshot(&self) -> Result<(), IndexerError> {
+        let skip_snapshot = std::env::var("SKIP_OBJECT_SNAPSHOT")
+            .map(|val| val.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
+        if skip_snapshot {
+            info!("skipping object snapshot");
+            return Ok(());
+        }
+
         let latest_cp = self
             .get_latest_tx_checkpoint_sequence_number()?
             .unwrap_or_default();
