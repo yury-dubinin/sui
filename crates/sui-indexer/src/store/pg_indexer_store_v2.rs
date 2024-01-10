@@ -839,11 +839,13 @@ impl PgIndexerStoreV2 {
         let this = self.clone();
         let current_span = tracing::Span::current();
         let guard = self.metrics.tokio_blocking_task_wait_latency.start_timer();
+        let exec_guard = self.metrics.tokio_blocking_task_wait_exec_latency.start_timer();
         tokio::task::spawn_blocking(move || {
             let _guard = current_span.enter();
-            let elapsed = guard.stop_and_record();
-            info!(elapsed, "Wait for tokio blocking task pool");
-            f(this)
+            let _elapsed = guard.stop_and_record();
+            let res = f(this);
+            let _exec_elapsed = exec_guard.stop_and_record();
+            res
         })
     }
 
@@ -896,9 +898,14 @@ impl IndexerStoreV2 for PgIndexerStoreV2 {
             .metrics
             .checkpoint_db_commit_latency_objects
             .start_timer();
+        let final_list_guard = self
+            .metrics
+            .make_object_final_list_latency
+            .start_timer();
         let objects = make_final_list_of_objects_to_commit(object_changes);
         let len = objects.len();
         let chunks = chunk!(objects, self.parallel_objects_chunk_size);
+        final_list_guard.stop_and_record();
         let futures = chunks
             .into_iter()
             .map(|c| self.spawn_blocking_task(move |this| this.persist_objects_chunk(c)))
