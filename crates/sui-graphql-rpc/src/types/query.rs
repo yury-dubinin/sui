@@ -72,16 +72,10 @@ impl Query {
         ctx: &Context<'_>,
         address: SuiAddress,
         version: Option<u64>,
-        checkpoint_sequence_number: Option<u64>,
     ) -> Result<Option<Object>> {
-        Object::query(
-            ctx.data_unchecked(),
-            address,
-            version,
-            checkpoint_sequence_number,
-        )
-        .await
-        .extend()
+        Object::query(ctx.data_unchecked(), address, version, None)
+            .await
+            .extend()
     }
 
     async fn address(&self, address: SuiAddress) -> Option<Address> {

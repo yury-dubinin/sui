@@ -8,7 +8,9 @@ use diesel::{
 };
 use move_core_types::annotated_value::{MoveStruct, MoveTypeLayout};
 use move_core_types::language_storage::StructTag;
-use sui_indexer::models_v2::objects::{StoredHistoryObject, StoredObject};
+use sui_indexer::models_v2::objects::{
+    StoredDeletedHistoryObject, StoredHistoryObject, StoredObject,
+};
 use sui_indexer::schema_v2::{checkpoints, objects, objects_history, objects_snapshot};
 use sui_indexer::types_v2::ObjectStatus as NativeObjectStatus;
 use sui_json_rpc::name_service::NameServiceConfig;
@@ -28,6 +30,7 @@ use super::{
 };
 use crate::context_data::db_data_provider::PgManager;
 use crate::context_data::package_cache::PackageCache;
+use crate::data::pg::coalesce;
 use crate::data::{Db, QueryExecutor};
 use crate::error::Error;
 use crate::types::base64::Base64;
@@ -51,7 +54,7 @@ pub(crate) enum ObjectKind {
     Historical(NativeObject, StoredHistoryObject),
     /// The object is wrapped or deleted and only partial information can be loaded from the
     /// indexer.
-    WrappedOrDeleted,
+    WrappedOrDeleted(StoredDeletedHistoryObject),
     /// The requested object falls outside of the consistent read range supported by the indexer.
     /// The requested object may or may not actually exist on-chain, but the data is not yet or no
     /// longer indexed.
@@ -143,7 +146,17 @@ impl ObjectKind {
             ObjectKind::Live(native, _)
             | ObjectKind::NotIndexed(native)
             | ObjectKind::Historical(native, _) => Some(native),
-            ObjectKind::WrappedOrDeleted | ObjectKind::OutsideAvailableRange => None,
+            ObjectKind::WrappedOrDeleted(_) | ObjectKind::OutsideAvailableRange => None,
+        }
+    }
+
+    pub(crate) fn version_impl(&self) -> Option<u64> {
+        match self {
+            ObjectKind::Live(native, _)
+            | ObjectKind::NotIndexed(native)
+            | ObjectKind::Historical(native, _) => Some(native.version().value()),
+            ObjectKind::WrappedOrDeleted(stored) => Some(stored.object_version as u64),
+            ObjectKind::OutsideAvailableRange => None,
         }
     }
 }
@@ -151,7 +164,7 @@ impl ObjectKind {
 #[Object]
 impl Object {
     async fn version(&self) -> Option<u64> {
-        self.kind.native().map(|native| native.version().value())
+        self.kind.version_impl()
     }
 
     /// The current status of the object as read from the off-chain store. The possible states are:
@@ -550,11 +563,11 @@ impl Object {
                             .order(checkpoints::sequence_number.desc())
                             .limit(1);
 
-                        historical_query = historical_query.filter(
-                            history::checkpoint_sequence_number
-                                .nullable()
-                                .between(left.single_value(), right.single_value()),
-                        );
+                        historical_query =
+                            historical_query.filter(history::checkpoint_sequence_number.between(
+                                coalesce(left.single_value(), 0),
+                                coalesce(right.single_value(), 0),
+                            ));
                     }
 
                     let final_query = snapshot_query.union(historical_query);
@@ -575,6 +588,7 @@ impl Object {
         let Some(stored_objs) = results else {
             return Ok(None);
         };
+        println!("Stored objects: {:?}", stored_objs);
 
         match stored_objs
             .iter()
@@ -625,112 +639,6 @@ impl Object {
             .await
             .map_err(|e| Error::Internal(format!("Failed to fetch object: {e}")));
         }
-
-        // use checkpoints::dsl as checkpoints;
-        // use objects_history::dsl as history;
-        // use objects_snapshot::dsl as snapshot;
-
-        // let results: Option<Vec<StoredHistoryObject>> = db
-        //     .inner
-        //     .spawn_blocking(move |this| {
-        //         this.run_consistent_query(|conn| {
-        //             let snapshot_query = snapshot::objects_snapshot
-        //                 .filter(snapshot::object_id.eq(vec_address.clone()));
-
-        //             let mut historical_query = history::objects_history
-        //                 .filter(history::object_id.eq(vec_address.clone()))
-        //                 .order_by(history::checkpoint_sequence_number.desc())
-        //                 .then_order_by(history::object_version.desc())
-        //                 .limit(1)
-        //                 .into_boxed();
-
-        //             if let Some(version) = version {
-        //                 historical_query =
-        //                     historical_query.filter(history::object_version.eq(version))
-        //             }
-
-        //             if let Some(checkpoint_sequence_number) = checkpoint_sequence_number {
-        //                 // should we check if checkpoint_sequence_number between left and right?
-        //                 historical_query = historical_query.filter(
-        //                     history::checkpoint_sequence_number.eq(checkpoint_sequence_number),
-        //                 );
-        //             } else {
-        //                 let left = snapshot::objects_snapshot
-        //                     .select(snapshot::checkpoint_sequence_number)
-        //                     .order(snapshot::checkpoint_sequence_number.desc())
-        //                     .first::<i64>(conn)
-        //                     .optional()?
-        //                     .unwrap_or_default();
-
-        //                 let right = checkpoints::checkpoints
-        //                     .select(checkpoints::sequence_number)
-        //                     .order(checkpoints::sequence_number.desc())
-        //                     .first::<i64>(conn)
-        //                     .optional()?
-        //                     .unwrap_or_default();
-        //                 historical_query = historical_query
-        //                     .filter(history::checkpoint_sequence_number.between(left, right));
-        //             }
-
-        //             snapshot_query.union(historical_query).load(conn).optional()
-        //         })
-        //     })
-        //     .await
-        //     .map_err(|e: sui_indexer::errors::IndexerError| {
-        //         Error::Internal(format!("Failed to fetch object: {e}"))
-        //     })?;
-
-        // // If the object existed at some point, it should be found at least from snapshots.
-        // // Therefore, if both results are None, the object does not exist.
-        // let Some(stored_objs) = results else {
-        //     return Ok(None);
-        // };
-
-        // // if version not provided, return the larger of the two objects
-        // let Some(version) = version else {
-        //     let snapshot = stored_objs.get(0);
-        //     let historical = stored_objs.get(1);
-
-        //     match (snapshot, historical) {
-        //         (Some(snapshot), Some(historical)) => {
-        //             if snapshot.object_version > historical.object_version {
-        //                 return Ok(Some(Self::try_from(snapshot.clone()).map_err(|e| {
-        //                     Error::Internal(format!("Failed to convert object: {e}"))
-        //                 })?));
-        //             } else {
-        //                 return Ok(Some(Self::try_from(historical.clone()).map_err(|e| {
-        //                     Error::Internal(format!("Failed to convert object: {e}"))
-        //                 })?));
-        //             }
-        //         }
-        //         (Some(snapshot), None) => {
-        //             return Ok(Some(Self::try_from(snapshot.clone()).map_err(|e| {
-        //                 Error::Internal(format!("Failed to convert object: {e}"))
-        //             })?));
-        //         }
-        //         (None, Some(historical)) => {
-        //             return Ok(Some(Self::try_from(historical.clone()).map_err(|e| {
-        //                 Error::Internal(format!("Failed to convert object: {e}"))
-        //             })?));
-        //         }
-        //         (None, None) => {
-        //             return Ok(None);
-        //         }
-        //     }
-        // };
-
-        // for stored_obj in stored_objs {
-        //     if stored_obj.object_version == version {
-        //         return Ok(Some(Self::try_from(stored_obj.clone()).map_err(|e| {
-        //             Error::Internal(format!("Failed to convert object: {e}"))
-        //         })?));
-        //     }
-        // }
-
-        // Ok(Some(Object {
-        //     address,
-        //     kind: ObjectKind::OutsideAvailableRange,
-        // }))
     }
 }
 
@@ -783,7 +691,12 @@ impl TryFrom<StoredHistoryObject> for Object {
             }
             NativeObjectStatus::WrappedOrDeleted => Ok(Self {
                 address,
-                kind: ObjectKind::WrappedOrDeleted,
+                kind: ObjectKind::WrappedOrDeleted(StoredDeletedHistoryObject {
+                    object_id: history_object.object_id,
+                    object_version: history_object.object_version,
+                    object_status: history_object.object_status,
+                    checkpoint_sequence_number: history_object.checkpoint_sequence_number,
+                }),
             }),
         }
     }
@@ -795,7 +708,7 @@ impl From<&ObjectKind> for GraphQLObjectKind {
             ObjectKind::NotIndexed(_) => GraphQLObjectKind::NotIndexed,
             ObjectKind::Live(_, _) => GraphQLObjectKind::Live,
             ObjectKind::Historical(_, _) => GraphQLObjectKind::Historical,
-            ObjectKind::WrappedOrDeleted => GraphQLObjectKind::WrappedOrDeleted,
+            ObjectKind::WrappedOrDeleted(_) => GraphQLObjectKind::WrappedOrDeleted,
             ObjectKind::OutsideAvailableRange => GraphQLObjectKind::OutsideAvailableRange,
         }
     }
