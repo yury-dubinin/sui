@@ -140,31 +140,10 @@ pub struct AddressOwner {
     owner: Option<Owner>,
 }
 
-impl ObjectKind {
-    pub(crate) fn native(&self) -> Option<&NativeObject> {
-        match self {
-            ObjectKind::Live(native, _)
-            | ObjectKind::NotIndexed(native)
-            | ObjectKind::Historical(native, _) => Some(native),
-            ObjectKind::WrappedOrDeleted(_) | ObjectKind::OutsideAvailableRange => None,
-        }
-    }
-
-    pub(crate) fn version_impl(&self) -> Option<u64> {
-        match self {
-            ObjectKind::Live(native, _)
-            | ObjectKind::NotIndexed(native)
-            | ObjectKind::Historical(native, _) => Some(native.version().value()),
-            ObjectKind::WrappedOrDeleted(stored) => Some(stored.object_version as u64),
-            ObjectKind::OutsideAvailableRange => None,
-        }
-    }
-}
-
 #[Object]
 impl Object {
     async fn version(&self) -> Option<u64> {
-        self.kind.version_impl()
+        self.version_impl()
     }
 
     /// The current status of the object as read from the off-chain store. The possible states are:
@@ -182,16 +161,14 @@ impl Object {
 
     /// 32-byte hash that identifies the object's current contents, encoded as a Base58 string.
     async fn digest(&self) -> Option<String> {
-        self.kind
-            .native()
+        self.native_impl()
             .map(|native| native.digest().base58_encode())
     }
 
     /// The amount of SUI we would rebate if this object gets deleted or mutated.
     /// This number is recalculated based on the present storage gas price.
     async fn storage_rebate(&self) -> Option<BigInt> {
-        self.kind
-            .native()
+        self.native_impl()
             .map(|native| BigInt::from(native.storage_rebate))
     }
 
@@ -199,7 +176,7 @@ impl Object {
     /// to be handled off-chain. The server substitutes data from the object
     /// into these templates to generate a display string per template.
     async fn display(&self, ctx: &Context<'_>) -> Result<Option<Vec<DisplayEntry>>> {
-        let Some(native) = self.kind.native() else {
+        let Some(native) = self.native_impl() else {
             return Ok(None);
         };
 
@@ -239,7 +216,7 @@ impl Object {
 
     /// The Base64 encoded bcs serialization of the object's content.
     async fn bcs(&self) -> Result<Option<Base64>> {
-        let Some(native) = self.kind.native() else {
+        let Some(native) = self.native_impl() else {
             return Ok(None);
         };
 
@@ -260,7 +237,7 @@ impl Object {
         &self,
         ctx: &Context<'_>,
     ) -> Result<Option<TransactionBlock>> {
-        let Some(native) = self.kind.native() else {
+        let Some(native) = self.native_impl() else {
             return Ok(None);
         };
 
@@ -277,7 +254,7 @@ impl Object {
     async fn owner(&self, ctx: &Context<'_>) -> Option<ObjectOwner> {
         use NativeOwner as O;
 
-        let Some(native) = self.kind.native() else {
+        let Some(native) = self.native_impl() else {
             return None;
         };
 
@@ -484,6 +461,25 @@ impl Object {
         Object {
             address,
             kind: ObjectKind::NotIndexed(native),
+        }
+    }
+
+    pub(crate) fn native_impl(&self) -> Option<&NativeObject> {
+        match &self.kind {
+            ObjectKind::Live(native, _)
+            | ObjectKind::NotIndexed(native)
+            | ObjectKind::Historical(native, _) => Some(native),
+            ObjectKind::WrappedOrDeleted(_) | ObjectKind::OutsideAvailableRange => None,
+        }
+    }
+
+    pub(crate) fn version_impl(&self) -> Option<u64> {
+        match &self.kind {
+            ObjectKind::Live(native, _)
+            | ObjectKind::NotIndexed(native)
+            | ObjectKind::Historical(native, _) => Some(native.version().value()),
+            ObjectKind::WrappedOrDeleted(stored) => Some(stored.object_version as u64),
+            ObjectKind::OutsideAvailableRange => None,
         }
     }
 

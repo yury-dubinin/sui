@@ -115,7 +115,7 @@ impl TryFrom<&Object> for MoveObject {
     type Error = MoveObjectDowncastError;
 
     fn try_from(object: &Object) -> Result<Self, Self::Error> {
-        let Some(native) = object.kind.native() else {
+        let Some(native) = object.native_impl() else {
             return Err(MoveObjectDowncastError);
         };
 

@@ -185,7 +185,7 @@ impl MovePackage {
     fn parsed_package(&self) -> Result<ParsedMovePackage, Error> {
         // TODO: Leverage the package cache (attempt to read from it, and if that doesn't succeed,
         // write back the parsed Package to the cache as well.)
-        let Some(native) = self.super_.kind.native() else {
+        let Some(native) = self.super_.native_impl() else {
             return Err(Error::Internal(format!(
                 "This should be unreachable as we cannot downcast if native is None"
             )));
@@ -235,7 +235,7 @@ impl TryFrom<&Object> for MovePackage {
     type Error = MovePackageDowncastError;
 
     fn try_from(object: &Object) -> Result<Self, Self::Error> {
-        let Some(native) = object.kind.native() else {
+        let Some(native) = object.native_impl() else {
             return Err(MovePackageDowncastError);
         };
 
