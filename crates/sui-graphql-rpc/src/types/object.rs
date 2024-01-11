@@ -511,31 +511,40 @@ impl Object {
                     // available range, and never touched again, it will not show up in the
                     // objects_history table. Thus, we always need to check the objects_snapshot
                     // table as well.
-                    let snapshot_query = snapshot::objects_snapshot
-                        .filter(snapshot::object_id.eq(vec_address.clone()));
+                    let mut snapshot_query = snapshot::objects_snapshot
+                        .filter(snapshot::object_id.eq(vec_address.clone()))
+                        .into_boxed();
 
                     let mut historical_query = history::objects_history
                         .filter(history::object_id.eq(vec_address.clone()))
-                        .order_by(history::checkpoint_sequence_number.desc())
-                        .then_order_by(history::object_version.desc())
+                        .order_by(history::object_version.desc())
                         .limit(1)
                         .into_boxed();
 
                     if let Some(version) = version {
+                        snapshot_query =
+                            snapshot_query.filter(snapshot::object_version.eq(version));
                         historical_query =
-                            historical_query.filter(history::object_version.eq(version))
+                            historical_query.filter(history::object_version.eq(version));
                     }
 
+                    let left = snapshot::objects_snapshot
+                        .select(snapshot::checkpoint_sequence_number)
+                        .order(snapshot::checkpoint_sequence_number.desc())
+                        .limit(1);
+
                     if let Some(checkpoint_sequence_number) = checkpoint_sequence_number {
+                        // We could make a validation check here that the provided
+                        // checkpoint_sequence_number falls between the available range. However,
+                        // this would incur another db roundtrip. Additionally, if
+                        // checkpoint_sequence_number < left, the db would return 0 rows, so the
+                        // check is unncessary as we need to make a roundtrip regardless.
                         historical_query = historical_query.filter(
-                            history::checkpoint_sequence_number.eq(checkpoint_sequence_number),
+                            history::checkpoint_sequence_number
+                                .nullable()
+                                .between(left.single_value(), checkpoint_sequence_number),
                         );
                     } else {
-                        let left = snapshot::objects_snapshot
-                            .select(snapshot::checkpoint_sequence_number)
-                            .order(snapshot::checkpoint_sequence_number.desc())
-                            .limit(1);
-
                         let right = checkpoints::checkpoints
                             .select(checkpoints::sequence_number)
                             .order(checkpoints::sequence_number.desc())
@@ -567,51 +576,29 @@ impl Object {
             return Ok(None);
         };
 
-        // if version not provided, return the larger of the two objects
-        let Some(version) = version else {
-            let snapshot = stored_objs.get(0);
-            let historical = stored_objs.get(1);
-
-            match (snapshot, historical) {
-                (Some(snapshot), Some(historical)) => {
-                    if snapshot.object_version > historical.object_version {
-                        return Ok(Some(Self::try_from(snapshot.clone()).map_err(|e| {
-                            Error::Internal(format!("Failed to convert object: {e}"))
-                        })?));
-                    } else {
-                        return Ok(Some(Self::try_from(historical.clone()).map_err(|e| {
-                            Error::Internal(format!("Failed to convert object: {e}"))
-                        })?));
-                    }
-                }
-                (Some(snapshot), None) => {
-                    return Ok(Some(Self::try_from(snapshot.clone()).map_err(|e| {
-                        Error::Internal(format!("Failed to convert object: {e}"))
-                    })?));
-                }
-                (None, Some(historical)) => {
-                    return Ok(Some(Self::try_from(historical.clone()).map_err(|e| {
-                        Error::Internal(format!("Failed to convert object: {e}"))
-                    })?));
-                }
-                (None, None) => {
-                    return Ok(None);
-                }
-            }
-        };
-
-        for stored_obj in stored_objs {
-            if stored_obj.object_version == version {
-                return Ok(Some(Self::try_from(stored_obj.clone()).map_err(|e| {
+        match stored_objs
+            .iter()
+            // First, filter the objects based on the version and checkpoint_sequence_number if provided
+            .filter(|stored_obj| {
+                version.map_or(true, |ver| stored_obj.object_version == ver)
+                    && checkpoint_sequence_number.map_or(true, |checkpoint| {
+                        stored_obj.checkpoint_sequence_number <= checkpoint
+                    })
+            })
+            // Then, find the object with the largest checkpoint_sequence_number among those
+            // filtered - it should still be within the available range as the db query was bounded
+            .max_by_key(|stored_obj| stored_obj.checkpoint_sequence_number)
+        {
+            Some(stored_obj) => {
+                Ok(Some(Self::try_from(stored_obj.clone()).map_err(|e| {
                     Error::Internal(format!("Failed to convert object: {e}"))
-                })?));
+                })?))
             }
+            None => Ok(Some(Object {
+                address: address.clone(),
+                kind: ObjectKind::OutsideAvailableRange,
+            })),
         }
-
-        Ok(Some(Object {
-            address: address.clone(),
-            kind: ObjectKind::OutsideAvailableRange,
-        }))
     }
 
     pub(crate) async fn query(
@@ -620,7 +607,6 @@ impl Object {
         version: Option<u64>,
         checkpoint_sequence_number: Option<u64>,
     ) -> Result<Option<Self>, Error> {
-        let vec_address = address.into_vec();
         let version = version.map(|v| v as i64);
         let checkpoint_sequence_number = checkpoint_sequence_number.map(|v| v as i64);
 
