@@ -498,8 +498,7 @@ impl Object {
                     .limit(1)
                     .into_boxed()
             })
-            .await
-            .map_err(|e| Error::Internal(format!("Failed to fetch object: {e}")))?;
+            .await?;
 
         stored_obj.map(Self::try_from).transpose()
     }
@@ -580,8 +579,7 @@ impl Object {
                     final_query.load(conn).optional()
                 })
             })
-            .await
-            .map_err(|e| Error::Internal(format!("Failed to fetch object: {e}")))?;
+            .await?;
 
         // If the object existed at some point, it should be found at least from snapshots.
         // Therefore, if both results are None, the object does not exist.
@@ -624,7 +622,6 @@ impl Object {
         let version = version.map(|v| v as i64);
         let checkpoint_sequence_number = checkpoint_sequence_number.map(|v| v as i64);
 
-        // live object scenario
         if version.is_none() && checkpoint_sequence_number.is_none() {
             return Object::live_object_query(db, &address)
                 .await
