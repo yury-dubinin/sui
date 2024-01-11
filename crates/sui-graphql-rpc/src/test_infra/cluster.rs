@@ -203,4 +203,8 @@ impl ExecutorCluster {
         .await
         .expect("Timeout waiting for indexer to catchup to checkpoint");
     }
+
+    pub async fn force_object_snapshot_catchup(&self) {
+        self.indexer_store.persist_object_snapshot().await.unwrap();
+    }
 }
