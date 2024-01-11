@@ -2475,6 +2475,7 @@ dependencies = [
  "prometheus",
  "serde",
  "sui-protocol-config",
+ "tap",
  "thiserror",
  "tokio",
  "tracing",
