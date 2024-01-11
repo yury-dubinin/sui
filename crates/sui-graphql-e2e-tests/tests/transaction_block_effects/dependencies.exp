@@ -48,7 +48,7 @@ Checkpoint created: 1
 task 10 'run-graphql'. lines 59-96:
 Response: {
   "data": {
-    "transactionBlockConnection": {
+    "transactionBlocks": {
       "nodes": [
         {
           "digest": "F7wZGihrpCKmZWjJ483wCRV8DNCYEj5U22qwBgXchAJY",
@@ -120,7 +120,7 @@ Response: {
 task 11 'run-graphql'. lines 98-135:
 Response: {
   "data": {
-    "transactionBlockConnection": {
+    "transactionBlocks": {
       "nodes": [
         {
           "digest": "F7wZGihrpCKmZWjJ483wCRV8DNCYEj5U22qwBgXchAJY",

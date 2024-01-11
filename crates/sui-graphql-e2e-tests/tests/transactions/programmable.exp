@@ -1,4 +1,4 @@
-processed 13 tasks
+processed 21 tasks
 
 init:
 A: object(0,0)
@@ -14,7 +14,7 @@ Checkpoint created: 1
 task 3 'run-graphql'. lines 23-202:
 Response: {
   "data": {
-    "transactionBlockConnection": {
+    "transactionBlocks": {
       "nodes": [
         {
           "digest": "8iusnVGLvNJyWwCCA4HzhYhcUxmTjky9xzqRRbW9jUSG",
@@ -181,7 +181,7 @@ Checkpoint created: 2
 task 6 'run-graphql'. lines 226-405:
 Response: {
   "data": {
-    "transactionBlockConnection": {
+    "transactionBlocks": {
       "nodes": [
         {
           "digest": "5JW6cXV4yZzpen5ar27RXHrbWe9yNz3zWcFoe5BVXVz8",
@@ -424,26 +424,31 @@ Response: {
   }
 }
 
-task 7 'programmable'. lines 407-416:
-created: object(7,0), object(7,1)
+task 7 'programmable'. lines 407-410:
+created: object(7,0)
+mutated: object(0,0)
+gas summary: computation_cost: 1000000, storage_cost: 2280000,  storage_rebate: 978120, non_refundable_storage_fee: 9880
+
+task 8 'programmable'. lines 412-421:
+created: object(8,0), object(8,1)
 mutated: object(0,0)
 gas summary: computation_cost: 1000000, storage_cost: 3328800,  storage_rebate: 978120, non_refundable_storage_fee: 9880
 
-task 8 'create-checkpoint'. lines 418-418:
+task 9 'create-checkpoint'. lines 423-423:
 Checkpoint created: 3
 
-task 9 'run-graphql'. lines 420-608:
+task 10 'run-graphql'. lines 425-613:
 Response: {
   "data": {
-    "transactionBlockConnection": {
+    "transactionBlocks": {
       "nodes": [
         {
-          "digest": "C61pBbx6kCC8Hx691fyeGmuJXvKXz51UMoo6aes6AZ6b",
+          "digest": "4C5GtERU8v1RnLKcanKQzh1NDwrqtZvy8B25HfZDEwPq",
           "sender": {
             "address": "0xfccc9a421bbb13c1a66a1aa98f0ad75029ede94857779c6915b44f94068b921e"
           },
           "signatures": [
-            "ABimXJ3ANKhfkOMSald/nmF2hj3UnLqmlXW2Meu5iqA6FuXRL89QM2H0ksIu0Ujtqf8E8yMapzNsNFMTjEpK0QV/UUY663bYjcm3XmNyULIgxJz1t5Z9vxfB+fp8WUoJKA=="
+            "AFKhNAi2a2rS3Uclr4dgkLIoE3aXklVr7zXCDypZCmw2DdpL/ZxwioQr8mwxSQDZ/W/asQ3SMjwj/p8Wn4dykQ9/UUY663bYjcm3XmNyULIgxJz1t5Z9vxfB+fp8WUoJKA=="
           ],
           "gasInput": {
             "gasSponsor": {
@@ -696,11 +701,14 @@ Response: {
           "effects": {
             "status": "SUCCESS",
             "errors": null,
-            "lamportVersion": 4,
+            "lamportVersion": 5,
             "dependencies": {
               "nodes": [
                 {
                   "digest": "5JW6cXV4yZzpen5ar27RXHrbWe9yNz3zWcFoe5BVXVz8"
+                },
+                {
+                  "digest": "9UMHTd4b4H2s1evaVAmWcxDkyqaD4wrPEqWoR5VRJMqx"
                 }
               ]
             },
@@ -720,19 +728,41 @@ Response: {
             "objectChanges": {
               "nodes": [
                 {
-                  "address": "0x04943e449c749b3f0e7b756c866881c48eae367ce5bfa707298895e933a71cea",
-                  "idCreated": true,
+                  "address": "0x707e432fda538aad9303258dfe579d3a2e4ac429a8c4f76f4ae0d7dda7b0a9c5",
+                  "idCreated": false,
                   "idDeleted": false,
                   "outputState": {
-                    "address": "0x04943e449c749b3f0e7b756c866881c48eae367ce5bfa707298895e933a71cea",
-                    "digest": "FdrDYjMyPJDWSFex4VrUXiQHkY565nxhYb9nG1TqrvN3",
+                    "address": "0x707e432fda538aad9303258dfe579d3a2e4ac429a8c4f76f4ae0d7dda7b0a9c5",
+                    "digest": "6hEmhnJ463t8Wzu7mDFpyVFmytfeC1ZRVS4zpbEaLseE",
                     "asMoveObject": {
                       "contents": {
                         "type": {
                           "repr": "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI>"
                         },
                         "json": {
-                          "id": "0x04943e449c749b3f0e7b756c866881c48eae367ce5bfa707298895e933a71cea",
+                          "id": "0x707e432fda538aad9303258dfe579d3a2e4ac429a8c4f76f4ae0d7dda7b0a9c5",
+                          "balance": {
+                            "value": "299999982036420"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "address": "0xb9c9b96f43315ea8bd7520dada284a0b81ec98f87ac8c610d263c682153a7b1b",
+                  "idCreated": true,
+                  "idDeleted": false,
+                  "outputState": {
+                    "address": "0xb9c9b96f43315ea8bd7520dada284a0b81ec98f87ac8c610d263c682153a7b1b",
+                    "digest": "3pjUzFhABKDV1AJnJjeETrpGwUhkFYE1xLsowZRGjJ8d",
+                    "asMoveObject": {
+                      "contents": {
+                        "type": {
+                          "repr": "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI>"
+                        },
+                        "json": {
+                          "id": "0xb9c9b96f43315ea8bd7520dada284a0b81ec98f87ac8c610d263c682153a7b1b",
                           "balance": {
                             "value": "2000"
                           }
@@ -742,41 +772,19 @@ Response: {
                   }
                 },
                 {
-                  "address": "0x707e432fda538aad9303258dfe579d3a2e4ac429a8c4f76f4ae0d7dda7b0a9c5",
-                  "idCreated": false,
-                  "idDeleted": false,
-                  "outputState": {
-                    "address": "0x707e432fda538aad9303258dfe579d3a2e4ac429a8c4f76f4ae0d7dda7b0a9c5",
-                    "digest": "6nPaq4Gr8WGSeSBSxZQKf2uaWgZcj1puKBmuUSpDL8HR",
-                    "asMoveObject": {
-                      "contents": {
-                        "type": {
-                          "repr": "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI>"
-                        },
-                        "json": {
-                          "id": "0x707e432fda538aad9303258dfe579d3a2e4ac429a8c4f76f4ae0d7dda7b0a9c5",
-                          "balance": {
-                            "value": "299999984338300"
-                          }
-                        }
-                      }
-                    }
-                  }
-                },
-                {
-                  "address": "0xe3b09ae703863578c15dab15600d8c63e22ba3e44c23cc1f357d1d17813cae90",
+                  "address": "0xfad4eadfb9bc4fa8d0a420dbc59b0d1b521f9d8183911f2a0994dfee2b511f4a",
                   "idCreated": true,
                   "idDeleted": false,
                   "outputState": {
-                    "address": "0xe3b09ae703863578c15dab15600d8c63e22ba3e44c23cc1f357d1d17813cae90",
-                    "digest": "DQLvWgKBYn1xbdNPUgQkjPbQ4CZWQQwkL8FXZbrmPGX4",
+                    "address": "0xfad4eadfb9bc4fa8d0a420dbc59b0d1b521f9d8183911f2a0994dfee2b511f4a",
+                    "digest": "aBKjnW2hwGfzi5KCYHCwf9UpiEB6k1K7eY4joQ46Hxv",
                     "asMoveObject": {
                       "contents": {
                         "type": {
                           "repr": "0x39cc43a6ddc899450953f7c8520d04bda19f1afeed48586215c98425c9946519::m::Foo"
                         },
                         "json": {
-                          "id": "0xe3b09ae703863578c15dab15600d8c63e22ba3e44c23cc1f357d1d17813cae90",
+                          "id": "0xfad4eadfb9bc4fa8d0a420dbc59b0d1b521f9d8183911f2a0994dfee2b511f4a",
                           "xs": [
                             "42",
                             "43"
@@ -807,7 +815,7 @@ Response: {
               "sequenceNumber": 3
             },
             "transactionBlock": {
-              "digest": "C61pBbx6kCC8Hx691fyeGmuJXvKXz51UMoo6aes6AZ6b"
+              "digest": "4C5GtERU8v1RnLKcanKQzh1NDwrqtZvy8B25HfZDEwPq"
             }
           },
           "expiration": null
@@ -817,25 +825,25 @@ Response: {
   }
 }
 
-task 10 'programmable'. lines 610-611:
+task 11 'programmable'. lines 615-616:
 Error: Transaction Effects Status: Unused result without the drop ability. Command result 0, return value 0
 Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: UnusedValueWithoutDrop { result_idx: 0, secondary_idx: 0 }, source: None, command: None } }
 
-task 11 'create-checkpoint'. lines 613-613:
+task 12 'create-checkpoint'. lines 618-618:
 Checkpoint created: 4
 
-task 12 'run-graphql'. lines 615-794:
+task 13 'run-graphql'. lines 620-799:
 Response: {
   "data": {
-    "transactionBlockConnection": {
+    "transactionBlocks": {
       "nodes": [
         {
-          "digest": "EyKHQCqTh5pD8CVJUe8uS8vZFaGPGQHiv8ZVEizbQNbD",
+          "digest": "7b8b5YukWeJWxa5HafdspY5yjYTFPmTVkBJ6XL5CWEqX",
           "sender": {
             "address": "0xfccc9a421bbb13c1a66a1aa98f0ad75029ede94857779c6915b44f94068b921e"
           },
           "signatures": [
-            "ALUJKhIXkv/M+l/QzrpDeHQvy3R9W3KAHNef9ujw9PpW8LIv8zDKIx/Af/9Z7lw8qVQBMKm5WOC9lqFWYM1BHwt/UUY663bYjcm3XmNyULIgxJz1t5Z9vxfB+fp8WUoJKA=="
+            "AIMQsc69UT+rxUwdDAUSHpRDpx/P3PkBm9wY1HWMCtAAvb5fqidwy7IPHlS1VDfTn0xxKJ5YhFDmeFHSK/faBwB/UUY663bYjcm3XmNyULIgxJz1t5Z9vxfB+fp8WUoJKA=="
           ],
           "gasInput": {
             "gasSponsor": {
@@ -887,11 +895,11 @@ Response: {
           "effects": {
             "status": "FAILURE",
             "errors": "Unused result without the drop ability. Command result 0, return value 0",
-            "lamportVersion": 5,
+            "lamportVersion": 6,
             "dependencies": {
               "nodes": [
                 {
-                  "digest": "C61pBbx6kCC8Hx691fyeGmuJXvKXz51UMoo6aes6AZ6b"
+                  "digest": "4C5GtERU8v1RnLKcanKQzh1NDwrqtZvy8B25HfZDEwPq"
                 }
               ]
             },
@@ -916,7 +924,7 @@ Response: {
                   "idDeleted": false,
                   "outputState": {
                     "address": "0x707e432fda538aad9303258dfe579d3a2e4ac429a8c4f76f4ae0d7dda7b0a9c5",
-                    "digest": "BnDbKTv7fWF3kH4eCjwwt8HygHHXeK1Umm25qtAwsDyy"
+                    "digest": "8SbobaXrFkAzVKYAjcp2SQTGM5RJRE5LEfVxYmZcMjgL"
                   }
                 }
               ]
@@ -940,10 +948,192 @@ Response: {
               "sequenceNumber": 4
             },
             "transactionBlock": {
-              "digest": "EyKHQCqTh5pD8CVJUe8uS8vZFaGPGQHiv8ZVEizbQNbD"
+              "digest": "7b8b5YukWeJWxa5HafdspY5yjYTFPmTVkBJ6XL5CWEqX"
             }
           },
           "expiration": null
+        }
+      ]
+    }
+  }
+}
+
+task 14 'run-graphql'. lines 801-811:
+Response: {
+  "data": {
+    "transactionBlocks": {
+      "edges": [
+        {
+          "cursor": "MA",
+          "node": {
+            "kind": {
+              "__typename": "GenesisTransaction"
+            }
+          }
+        },
+        {
+          "cursor": "MQ",
+          "node": {
+            "kind": {
+              "__typename": "ProgrammableTransactionBlock"
+            }
+          }
+        },
+        {
+          "cursor": "Mg",
+          "node": {
+            "kind": {
+              "__typename": "ProgrammableTransactionBlock"
+            }
+          }
+        },
+        {
+          "cursor": "Mw",
+          "node": {
+            "kind": {
+              "__typename": "ProgrammableTransactionBlock"
+            }
+          }
+        },
+        {
+          "cursor": "NA",
+          "node": {
+            "kind": {
+              "__typename": "ProgrammableTransactionBlock"
+            }
+          }
+        },
+        {
+          "cursor": "NQ",
+          "node": {
+            "kind": {
+              "__typename": "ProgrammableTransactionBlock"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+
+task 15 'run-graphql'. lines 813-823:
+Response: {
+  "data": {
+    "transactionBlocks": {
+      "edges": [
+        {
+          "cursor": "MA",
+          "node": {
+            "kind": {
+              "__typename": "GenesisTransaction"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+
+task 16 'run-graphql'. lines 825-835:
+Response: {
+  "data": {
+    "transactionBlocks": {
+      "edges": [
+        {
+          "cursor": "MQ",
+          "node": {
+            "kind": {
+              "__typename": "ProgrammableTransactionBlock"
+            }
+          }
+        },
+        {
+          "cursor": "Mg",
+          "node": {
+            "kind": {
+              "__typename": "ProgrammableTransactionBlock"
+            }
+          }
+        },
+        {
+          "cursor": "Mw",
+          "node": {
+            "kind": {
+              "__typename": "ProgrammableTransactionBlock"
+            }
+          }
+        },
+        {
+          "cursor": "NA",
+          "node": {
+            "kind": {
+              "__typename": "ProgrammableTransactionBlock"
+            }
+          }
+        },
+        {
+          "cursor": "NQ",
+          "node": {
+            "kind": {
+              "__typename": "ProgrammableTransactionBlock"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+
+task 17 'run-graphql'. lines 837-844:
+Response: {
+  "data": {
+    "address": {
+      "transactionBlocks": {
+        "nodes": []
+      }
+    }
+  }
+}
+
+task 18 'run-graphql'. lines 846-851:
+Response: {
+  "data": {
+    "transactionBlocks": {
+      "edges": [
+        {
+          "cursor": "Mg"
+        },
+        {
+          "cursor": "Mw"
+        }
+      ]
+    }
+  }
+}
+
+task 19 'run-graphql'. lines 853-858:
+Response: {
+  "data": {
+    "transactionBlocks": {
+      "edges": [
+        {
+          "cursor": "Mw"
+        },
+        {
+          "cursor": "NA"
+        }
+      ]
+    }
+  }
+}
+
+task 20 'run-graphql'. lines 860-870:
+Response: {
+  "data": {
+    "transactionBlocks": {
+      "edges": [
+        {
+          "cursor": "Mw"
         }
       ]
     }

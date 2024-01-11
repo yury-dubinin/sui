@@ -1,7 +1,7 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::{context_data::db_data_provider::PgManager, error::Error};
+use crate::error::Error;
 use async_graphql::{
     connection::{Connection, CursorType, Edge},
     *,
@@ -20,6 +20,7 @@ use super::{
     checkpoint::{Checkpoint, CheckpointId},
     cursor::{Cursor, Page},
     date_time::DateTime,
+    digest::Digest,
     epoch::Epoch,
     gas::GasEffects,
     object_change::ObjectChange,
@@ -125,23 +126,35 @@ impl TransactionBlockEffects {
             return Ok(connection);
         };
 
-        let transactions = ctx
-            .data_unchecked::<PgManager>()
-            .fetch_txs_by_digests(&dependencies[**fst..=**lst])
-            .await
-            .extend()?;
+        let transactions = TransactionBlock::multi_query(
+            ctx.data_unchecked(),
+            dependencies[**fst..=**lst]
+                .iter()
+                .map(|d| Digest::from(*d))
+                .collect(),
+        )
+        .await
+        .extend()?;
 
-        let Some(transactions) = transactions else {
+        if transactions.is_empty() {
             return Ok(connection);
         };
 
         connection.has_previous_page = prev;
         connection.has_next_page = next;
 
-        for (c, transaction) in indices.into_iter().zip(transactions.into_iter()) {
+        for idx in indices {
+            let digest: Digest = dependencies[*idx].into();
+            let Some(transaction) = transactions.get(&digest) else {
+                return Err(Error::Internal(format!(
+                    "Failed to fetch transaction: {digest}"
+                )))
+                .extend();
+            };
+
             connection
                 .edges
-                .push(Edge::new(c.encode_cursor(), transaction));
+                .push(Edge::new(idx.encode_cursor(), transaction.clone()));
         }
 
         Ok(connection)
