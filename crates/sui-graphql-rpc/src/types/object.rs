@@ -3,8 +3,8 @@
 
 use async_graphql::{connection::Connection, *};
 use diesel::{
-    debug_query, CombineDsl, ExpressionMethods, NullableExpressionMethods, OptionalExtension,
-    QueryDsl, RunQueryDsl,
+    CombineDsl, ExpressionMethods, NullableExpressionMethods, OptionalExtension, QueryDsl,
+    RunQueryDsl,
 };
 use move_core_types::annotated_value::{MoveStruct, MoveTypeLayout};
 use move_core_types::language_storage::StructTag;
@@ -529,6 +529,7 @@ impl Object {
                         .limit(1)
                         .into_boxed();
 
+                    // version is an exact lookup
                     if let Some(version) = version {
                         snapshot_query =
                             snapshot_query.filter(snapshot::object_version.eq(version));
@@ -541,12 +542,13 @@ impl Object {
                         .order(snapshot::checkpoint_sequence_number.desc())
                         .limit(1);
 
+                    // if some checkpoint_sequence_number is provided, use it as the upper bound.
+                    // This is because an object can be extant at some target, but be indexed with
+                    // at a checkpoint_sequence_number <= target.
                     if let Some(checkpoint_sequence_number) = checkpoint_sequence_number {
-                        // We could make a validation check here that the provided
-                        // checkpoint_sequence_number falls between the available range. However,
-                        // this would incur another db roundtrip. Additionally, if
-                        // checkpoint_sequence_number < left, the db would return 0 rows, so the
-                        // check is unncessary as we need to make a roundtrip regardless.
+                        // A validation check is not needed as we coalesce both sides to 0 for null
+                        // values, and if left > right, the db will return 0 rows. This also saves
+                        // us a roundtrip.
                         historical_query = historical_query.filter(
                             history::checkpoint_sequence_number
                                 .nullable()
@@ -565,24 +567,16 @@ impl Object {
                             ));
                     }
 
-                    let final_query = snapshot_query.union(historical_query);
-
-                    let debug = debug_query(&final_query);
-
-                    println!("Query: {:?}", debug);
-                    println!("Query: {}", debug.to_string());
-
-                    final_query.load(conn).optional()
+                    snapshot_query.union(historical_query).load(conn).optional()
                 })
             })
             .await?;
 
-        // If the object existed at some point, it should be found at least from snapshots.
-        // Therefore, if both results are None, the object does not exist.
+        // For the moment, if the object existed at some point, it will have eventually be written to objects_snapshot.
+        // Therefore, if both results are None, the object has never existed.
         let Some(stored_objs) = results else {
             return Ok(None);
         };
-        println!("Stored objects: {:?}", stored_objs);
 
         match stored_objs
             .iter()
@@ -602,6 +596,10 @@ impl Object {
                     Error::Internal(format!("Failed to convert object: {e}"))
                 })?))
             }
+            // We were able to retrieve results, but do not match with the given parameters. The
+            // most likely scenario is when we look up an object on object_id and
+            // checkpoint_sequence_number, no object_version. The object exists in objects_snapshot,
+            // and the data's checkpoint_sequence_number exceeds the given parameter.
             None => Ok(Some(Object {
                 address: address.clone(),
                 kind: ObjectKind::OutsideAvailableRange,
@@ -619,19 +617,11 @@ impl Object {
         let checkpoint_sequence_number = checkpoint_sequence_number.map(|v| v as i64);
 
         if version.is_none() && checkpoint_sequence_number.is_none() {
-            return Object::live_object_query(db, &address)
-                .await
-                .map_err(|e| Error::Internal(format!("Failed to fetch object: {e}")));
+            Object::live_object_query(db, &address).await
         } else {
-            return Object::historical_object_query(
-                db,
-                &address,
-                version,
-                checkpoint_sequence_number,
-            )
-            .await
-            .map_err(|e| Error::Internal(format!("Failed to fetch object: {e}")));
+            Object::historical_object_query(db, &address, version, checkpoint_sequence_number).await
         }
+        .map_err(|e| Error::Internal(format!("Failed to fetch object: {e}")))
     }
 }
 
