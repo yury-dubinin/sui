@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 mod block;
+mod block_manager;
 mod block_verifier;
 mod commit;
 mod context;
