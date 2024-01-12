@@ -390,7 +390,25 @@ fn local_modules(
 
         // Include the root compiled units, at their current addresses.
         SourceMode::Verify => {
-            for local_unit in &compiled_package.root_compiled_units {
+            // Compile root modules with prior compiler if needed.
+            let root_compiled_units = {
+                let root_compiled_units = compiled_package
+                    .root_compiled_units
+                    .iter()
+                    .map(|u| ("root".into(), u.clone()))
+                    .collect::<Vec<_>>();
+                match units_for_toolchain(&root_compiled_units) {
+                    Ok(result) => result,
+                    Err(e) => {
+                        return Err(SourceVerificationError::CannotCheckLocalModules {
+                            module: compiled_package.compiled_package_info.package_name,
+                            message: e.to_string(),
+                        })
+                    }
+                }
+            };
+
+            for (_, local_unit) in root_compiled_units {
                 let m = &local_unit.unit;
 
                 let module = m.name;
@@ -409,7 +427,25 @@ fn local_modules(
         // Include the root compiled units, and any unpublished dependencies with their
         // addresses substituted
         SourceMode::VerifyAt(root_address) => {
-            for local_unit in &compiled_package.root_compiled_units {
+            // Compile root modules with prior compiler if needed.
+            let root_compiled_units = {
+                let root_compiled_units = compiled_package
+                    .root_compiled_units
+                    .iter()
+                    .map(|u| ("root".into(), u.clone()))
+                    .collect::<Vec<_>>();
+                match units_for_toolchain(&root_compiled_units) {
+                    Ok(result) => result,
+                    Err(e) => {
+                        return Err(SourceVerificationError::CannotCheckLocalModules {
+                            module: compiled_package.compiled_package_info.package_name,
+                            message: e.to_string(),
+                        })
+                    }
+                }
+            };
+
+            for (_, local_unit) in root_compiled_units {
                 let m = &local_unit.unit;
 
                 let module = m.name;
@@ -456,6 +492,13 @@ fn units_for_toolchain(
             edition: Edition::LEGACY, /* unused for current_toolchain */
             flavor: Flavor::Sui,      /* unused for current_toolchain */
         };
+
+        if sui_types::is_system_package(local_unit.unit.address.into_inner()) {
+            // System packages are always compiled with the current compiler.
+            package_version_map.insert(*package, current_toolchain);
+            continue;
+        }
+
         let package_root = SourcePackageLayout::try_find_root(&local_unit.source_path)?;
         let lock_file = package_root.join("Move.lock");
         if !lock_file.exists() {
