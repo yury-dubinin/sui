@@ -2795,7 +2795,7 @@ impl AuthorityState {
 
     #[instrument(level = "trace", skip_all)]
     pub async fn get_object(&self, object_id: &ObjectID) -> SuiResult<Option<Object>> {
-        self.database.get_object(object_id)
+        self.execution_cache.get_object(object_id)
     }
 
     pub async fn get_sui_system_package_object_ref(&self) -> SuiResult<ObjectRef> {
@@ -2810,12 +2810,12 @@ impl AuthorityState {
     /// Instead of this function use AuthorityEpochStore::epoch_start_configuration() to access this object everywhere
     /// besides when we are reading fields for the current epoch
     pub fn get_sui_system_state_object_during_reconfig(&self) -> SuiResult<SuiSystemState> {
-        self.database.get_sui_system_state_object()
+        self.execution_cache.get_sui_system_state_object()
     }
 
     // This function is only used for testing.
     pub fn get_sui_system_state_object_for_testing(&self) -> SuiResult<SuiSystemState> {
-        self.database.get_sui_system_state_object()
+        self.execution_cache.get_sui_system_state_object()
     }
 
     #[instrument(level = "trace", skip_all)]
@@ -2867,7 +2867,10 @@ impl AuthorityState {
     #[instrument(level = "trace", skip_all)]
     pub fn get_object_read(&self, object_id: &ObjectID) -> SuiResult<ObjectRead> {
         Ok(
-            match self.database.get_latest_object_or_tombstone(*object_id)? {
+            match self
+                .execution_cache
+                .get_latest_object_or_tombstone(*object_id)?
+            {
                 Some((_, ObjectOrTombstone::Object(object))) => {
                     let layout = self.get_object_layout(&object)?;
                     ObjectRead::Exists(object.compute_object_reference(), object, layout)
@@ -2926,7 +2929,7 @@ impl AuthorityState {
     ) -> SuiResult<PastObjectRead> {
         // Firstly we see if the object ever existed by getting its latest data
         let Some(obj_ref) = self
-            .database
+            .execution_cache
             .get_latest_object_ref_or_tombstone(*object_id)?
         else {
             return Ok(PastObjectRead::ObjectNotExists(*object_id));
@@ -2978,7 +2981,7 @@ impl AuthorityState {
         object_id: &ObjectID,
         version: SequenceNumber,
     ) -> SuiResult<Option<(Object, Option<MoveStructLayout>)>> {
-        let Some(object) = self.database.get_object_by_key(object_id, version)? else {
+        let Some(object) = self.execution_cache.get_object_by_key(object_id, version)? else {
             return Ok(None);
         };
 
@@ -3005,7 +3008,7 @@ impl AuthorityState {
         object_id: &ObjectID,
         version: SequenceNumber,
     ) -> SuiResult<Owner> {
-        self.database
+        self.execution_cache
             .get_object_by_key(object_id, version)?
             .ok_or_else(|| {
                 SuiError::from(UserInputError::ObjectNotFound {
@@ -3083,7 +3086,7 @@ impl AuthorityState {
             .collect::<Vec<_>>();
         let mut move_objects = vec![];
 
-        let objects = self.database.multi_get_object_by_key(&object_ids)?;
+        let objects = self.execution_cache.multi_get_object_by_key(&object_ids)?;
 
         for (o, id) in objects.into_iter().zip(object_ids) {
             let object = o.ok_or_else(|| {
@@ -3198,7 +3201,7 @@ impl AuthorityState {
         &self,
         digest: &TransactionEventsDigest,
     ) -> SuiResult<TransactionEvents> {
-        self.database
+        self.execution_cache
             .get_events(digest)?
             .ok_or(SuiError::TransactionEventsNotFound { digest: *digest })
     }
@@ -3577,7 +3580,10 @@ impl AuthorityState {
         if let Some(effects) =
             self.get_signed_effects_and_maybe_resign(transaction_digest, epoch_store)?
         {
-            if let Some(transaction) = self.database.get_transaction_block(transaction_digest)? {
+            if let Some(transaction) = self
+                .execution_cache
+                .get_transaction_block(transaction_digest)?
+            {
                 let cert_sig = epoch_store.get_transaction_cert_sig(transaction_digest)?;
                 let events = if let Some(digest) = effects.events_digest() {
                     self.get_transaction_events(digest)?
@@ -3585,7 +3591,7 @@ impl AuthorityState {
                     TransactionEvents::default()
                 };
                 return Ok(Some((
-                    transaction.into_message(),
+                    (*transaction).clone().into_message(),
                     TransactionStatus::Executed(cert_sig, effects.into_inner(), events),
                 )));
             } else {
@@ -3613,7 +3619,9 @@ impl AuthorityState {
         transaction_digest: &TransactionDigest,
         epoch_store: &Arc<AuthorityPerEpochStore>,
     ) -> SuiResult<Option<VerifiedSignedTransactionEffects>> {
-        let effects = self.database.get_executed_effects(transaction_digest)?;
+        let effects = self
+            .execution_cache
+            .get_executed_effects(transaction_digest)?;
         match effects {
             Some(effects) => Ok(Some(self.sign_effects(effects, epoch_store)?)),
             None => Ok(None),
@@ -3808,15 +3816,20 @@ impl AuthorityState {
         Ok(tx_option)
     }
 
-    pub async fn get_objects(&self, _objects: &[ObjectID]) -> SuiResult<Vec<Option<Object>>> {
-        self.database.get_objects(_objects)
+    pub async fn get_objects(&self, objects: &[ObjectID]) -> SuiResult<Vec<Option<Object>>> {
+        let mut ret = Vec::with_capacity(objects.len());
+        for object_id in objects {
+            ret.push(self.execution_cache.get_object(object_id)?);
+        }
+        Ok(ret)
     }
 
     pub async fn get_object_or_tombstone(
         &self,
         object_id: ObjectID,
     ) -> SuiResult<Option<ObjectRef>> {
-        self.database.get_latest_object_ref_or_tombstone(object_id)
+        self.execution_cache
+            .get_latest_object_ref_or_tombstone(object_id)
     }
 
     /// Ordinarily, protocol upgrades occur when 2f + 1 + (f *
@@ -4280,7 +4293,7 @@ impl AuthorityState {
         // The tx could have been executed by state sync already - if so simply return an error.
         // The checkpoint builder will shortly be terminated by reconfiguration anyway.
         if self
-            .database
+            .execution_cache
             .is_tx_already_executed(tx_digest)
             .expect("read cannot fail")
         {
@@ -4463,7 +4476,7 @@ impl TransactionKeyValueStoreTrait for AuthorityState {
             self.execution_cache
                 .multi_get_transaction_blocks(transactions)?
                 .into_iter()
-                .map(|t| t.map(|t| t.into_inner()))
+                .map(|t| t.map(|t| (*t).clone().into_inner()))
                 .collect()
         } else {
             vec![]
