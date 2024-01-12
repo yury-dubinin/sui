@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use enum_dispatch::enum_dispatch;
+use std::ops::Deref;
 use std::{
     cell::OnceCell,
     fmt,
@@ -83,6 +84,7 @@ pub struct BlockV1 {
 }
 
 impl BlockV1 {
+    #[allow(dead_code)]
     pub(crate) fn new(
         round: Round,
         author: AuthorityIndex,
@@ -199,11 +201,7 @@ pub(crate) struct SignedBlock {
     serialized: bytes::Bytes,
 }
 
-impl SignedBlock {
-    // TODO: add deserialization and verification.
-}
-
-/// Verifiied block allows access to its content.
+/// Verified block allows access to its content.
 #[allow(unused)]
 #[derive(Deserialize, Serialize)]
 pub(crate) struct VerifiedBlock {
@@ -212,6 +210,27 @@ pub(crate) struct VerifiedBlock {
 
     #[serde(skip)]
     serialized: bytes::Bytes,
+}
+
+impl VerifiedBlock {
+    #[cfg(test)]
+    #[allow(unused)]
+    pub(crate) fn new_for_test(block: Block) -> VerifiedBlock {
+        Self {
+            block,
+            signature: bytes::Bytes::new(),
+            serialized: bytes::Bytes::new(),
+        }
+    }
+}
+
+/// Allow quick access on the underlying Block without having to always refer to the inner block ref.
+impl Deref for VerifiedBlock {
+    type Target = Block;
+
+    fn deref(&self) -> &Self::Target {
+        &self.block
+    }
 }
 
 // TODO: add basic verification for BlockRef and BlockDigest computations.
