@@ -10997,6 +10997,7 @@ dependencies = [
  "move-core-types",
  "move-package",
  "num-bigint 0.4.4",
+ "petgraph 0.5.1",
  "prometheus",
  "rand 0.8.5",
  "regex",
