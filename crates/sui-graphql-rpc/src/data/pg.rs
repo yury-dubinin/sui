@@ -53,9 +53,9 @@ impl QueryExecutor for PgManager_ {
             })
             .await
             .map_err(|e| Error::Internal(e.to_string()));
-        let elapsed = instant.elapsed();
+        let elapsed = instant.elapsed().as_millis() as u64;
         if let Some(metrics) = &self.metrics {
-            metrics.observe_db_data(elapsed.as_secs_f64(), result.is_ok());
+            metrics.observe_db_data(elapsed, result.is_ok());
         }
         result
     }
@@ -79,10 +79,9 @@ impl QueryExecutor for PgManager_ {
             })
             .await
             .map_err(|e| Error::Internal(e.to_string()));
-        let elapsed = instant.elapsed();
-
+        let elapsed = instant.elapsed().as_millis() as u64;
         if let Some(metrics) = &self.metrics {
-            metrics.observe_db_data(elapsed.as_secs_f64(), result.is_ok());
+            metrics.observe_db_data(elapsed, result.is_ok());
         }
         result
     }
@@ -106,9 +105,9 @@ impl QueryExecutor for PgManager_ {
             })
             .await
             .map_err(|e| Error::Internal(e.to_string()));
-        let elapsed = instant.elapsed();
+        let elapsed = instant.elapsed().as_millis() as u64;
         if let Some(metrics) = &self.metrics {
-            metrics.observe_db_data(elapsed.as_secs_f64(), result.is_ok());
+            metrics.observe_db_data(elapsed, result.is_ok());
         }
         result
     }
