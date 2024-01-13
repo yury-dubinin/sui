@@ -67,7 +67,7 @@ pub(crate) trait DbConnection {
     type Backend: diesel::backend::Backend;
     type Connection: diesel::Connection<Backend = Self::Backend>;
 
-    /// Run a query that fetches a single value. `query` is a thunk that returns a boxed query when
+    /// Run a query that fetches a single value. `query` is a thunk that returns a query when
     /// called.
     fn result<Q, U>(&mut self, query: impl Fn() -> Q) -> QueryResult<U>
     where
@@ -75,7 +75,7 @@ pub(crate) trait DbConnection {
         Q: LoadQuery<'static, Self::Connection, U>,
         Q: QueryId + QueryFragment<Self::Backend>;
 
-    /// Run a query that fetches multiple values. `query` is a thunk that returns a boxed query when
+    /// Run a query that fetches multiple values. `query` is a thunk that returns a query when
     /// called.
     fn results<Q, U>(&mut self, query: impl Fn() -> Q) -> QueryResult<Vec<U>>
     where
@@ -84,7 +84,7 @@ pub(crate) trait DbConnection {
         Q: QueryId + QueryFragment<Self::Backend>;
 
     /// Helper to limit a query that fetches multiple values to return only its first value. `query`
-    /// is a thunk that returns a boxed query when called.
+    /// is a thunk that returns a query when called.
     fn first<Q: LimitDsl, U>(&mut self, query: impl Fn() -> Q) -> QueryResult<U>
     where
         <Q as LimitDsl>::Output: diesel::query_builder::Query,
