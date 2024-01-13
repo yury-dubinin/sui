@@ -745,7 +745,8 @@ impl AuthorityState {
                 &receiving_objects_refs,
                 epoch_store.epoch(),
             )
-            .await?;
+            .await
+            .unwrap();
 
         let (_gas_status, checked_input_objects) = sui_transaction_checks::check_transaction_input(
             epoch_store.protocol_config(),
@@ -754,7 +755,8 @@ impl AuthorityState {
             input_objects,
             receiving_objects,
             &self.metrics.bytecode_verifier_metrics,
-        )?;
+        )
+        .unwrap();
 
         let owned_objects = checked_input_objects.inner().filter_owned_objects();
 
@@ -770,7 +772,8 @@ impl AuthorityState {
         // and returns ConflictingTransaction error in case there is a lock on a different
         // existing transaction.
         self.set_transaction_lock(&owned_objects, signed_transaction.clone(), epoch_store)
-            .await?;
+            .await
+            .unwrap();
 
         Ok(signed_transaction)
     }
@@ -3716,7 +3719,7 @@ impl AuthorityState {
 
         // Acquire the lock on input objects
         // XXX
-        self.database
+        self.execution_cache
             .acquire_transaction_locks(epoch_store.epoch(), owned_input_objects, tx_digest)
             .await?;
 
