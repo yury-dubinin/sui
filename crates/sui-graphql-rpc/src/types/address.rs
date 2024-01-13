@@ -46,7 +46,7 @@ impl Address {
         use AddressTransactionBlockRelationship as R;
         let page = Page::from_params(ctx.data_unchecked(), first, after, last, before)?;
 
-        let Some(filter) = filter.unwrap_or_default().merge(match relation {
+        let Some(filter) = filter.unwrap_or_default().intersect(match relation {
             // Relationship defaults to "signer" if none is supplied.
             Some(R::Sign) | None => TransactionBlockFilter {
                 sign_address: Some(self.address),

@@ -128,10 +128,13 @@ impl Checkpoint {
     ) -> Result<Connection<String, TransactionBlock>> {
         let page = Page::from_params(ctx.data_unchecked(), first, after, last, before)?;
 
-        let Some(filter) = filter.unwrap_or_default().merge(TransactionBlockFilter {
-            at_checkpoint: Some(self.stored.sequence_number as u64),
-            ..Default::default()
-        }) else {
+        let Some(filter) = filter
+            .unwrap_or_default()
+            .intersect(TransactionBlockFilter {
+                at_checkpoint: Some(self.stored.sequence_number as u64),
+                ..Default::default()
+            })
+        else {
             return Ok(Connection::new(false, false));
         };
 

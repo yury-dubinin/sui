@@ -189,6 +189,10 @@ impl TransactionBlock {
         .transpose()
     }
 
+    /// Look up multiple `TransactionBlock`s by their digests. Returns a map from those digests to
+    /// their resulting transaction blocks, for the blocks that could be found. We return a map
+    /// because the order of results from the DB is not otherwise guaranteed to match the order that
+    /// digests were passed into `multi_query`.
     pub(crate) async fn multi_query(
         db: &Db,
         digests: Vec<Digest>,
@@ -306,7 +310,11 @@ impl TransactionBlock {
 }
 
 impl TransactionBlockFilter {
-    pub(crate) fn merge(self, other: Self) -> Option<Self> {
+    /// Try to create a filter whose results are the intersection of transaction blocks in `self`'s
+    /// results and transaction blocks in `other`'s results. This may not be possible if the
+    /// resulting filter is inconsistent in some way (e.g. a filter that requires one field to be
+    /// two different values simultaneously).
+    pub(crate) fn intersect(self, other: Self) -> Option<Self> {
         fn by_eq<T: Eq>(a: T, b: T) -> Option<T> {
             (a == b).then_some(a)
         }

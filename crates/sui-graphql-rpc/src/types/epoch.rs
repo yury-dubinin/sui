@@ -172,12 +172,15 @@ impl Epoch {
         let page = Page::from_params(ctx.data_unchecked(), first, after, last, before)?;
 
         #[allow(clippy::unnecessary_lazy_evaluations)] // rust-lang/rust-clippy#9422
-        let Some(filter) = filter.unwrap_or_default().merge(TransactionBlockFilter {
-            after_checkpoint: (self.stored.first_checkpoint_id > 0)
-                .then(|| self.stored.first_checkpoint_id as u64 - 1),
-            before_checkpoint: self.stored.last_checkpoint_id.map(|id| id as u64 + 1),
-            ..Default::default()
-        }) else {
+        let Some(filter) = filter
+            .unwrap_or_default()
+            .intersect(TransactionBlockFilter {
+                after_checkpoint: (self.stored.first_checkpoint_id > 0)
+                    .then(|| self.stored.first_checkpoint_id as u64 - 1),
+                before_checkpoint: self.stored.last_checkpoint_id.map(|id| id as u64 + 1),
+                ..Default::default()
+            })
+        else {
             return Ok(Connection::new(false, false));
         };
 
