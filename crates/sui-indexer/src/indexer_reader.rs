@@ -177,7 +177,8 @@ impl IndexerReader {
         E: From<diesel::result::Error> + std::error::Error + Send + 'static,
         T: Send + 'static,
     {
-        self.spawn_blocking(move |this| this.run_query_repeatable(query)).await
+        self.spawn_blocking(move |this| this.run_query_repeatable(query))
+            .await
     }
 }
 
