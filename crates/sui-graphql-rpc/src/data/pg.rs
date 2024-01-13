@@ -14,8 +14,6 @@ use diesel::{
 };
 use sui_indexer::indexer_reader::IndexerReader;
 
-use tracing::{error, info};
-
 pub(crate) struct PgManager_ {
     pub inner: IndexerReader,
     pub limits: Limits,
@@ -59,9 +57,6 @@ impl QueryExecutor for PgManager_ {
         if let Some(metrics) = &self.metrics {
             metrics.observe_db_data(elapsed.as_secs_f64(), result.is_ok());
         }
-        if result.is_err() {
-            info!(target: "async-graphql", "DB query error: {:?}", result.as_ref().err());
-        }
         result
     }
 
@@ -89,9 +84,6 @@ impl QueryExecutor for PgManager_ {
         if let Some(metrics) = &self.metrics {
             metrics.observe_db_data(elapsed.as_secs_f64(), result.is_ok());
         }
-        if result.is_err() {
-            info!(target: "async-graphql", "DB query error: {:?}", result.as_ref().err());
-        }
         result
     }
 
@@ -117,9 +109,6 @@ impl QueryExecutor for PgManager_ {
         let elapsed = instant.elapsed();
         if let Some(metrics) = &self.metrics {
             metrics.observe_db_data(elapsed.as_secs_f64(), result.is_ok());
-        }
-        if result.is_err() {
-            error!(target: "async-graphql", "DB query error: {:?}", result.as_ref().err());
         }
         result
     }
@@ -164,9 +153,19 @@ mod query_cost {
         };
 
         if cost > max_db_query_cost as f64 {
-            warn!(cost, max_db_query_cost, exceeds = true, "Estimated cost");
+            warn!(
+                cost,
+                max_db_query_cost,
+                exceeds = true,
+                "[Cost] Estimated cost"
+            );
         } else {
-            info!(cost, max_db_query_cost, exceeds = false, "Estimated cost");
+            info!(
+                cost,
+                max_db_query_cost,
+                exceeds = false,
+                "[Cost] Estimated cost"
+            );
         }
     }
 
